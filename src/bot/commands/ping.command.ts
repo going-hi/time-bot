@@ -1,0 +1,13 @@
+import { AbstractCommand } from "./abstract.command";
+import { Context, CommandContext } from "grammy";
+
+export class PingCommand extends AbstractCommand {
+    public commandName = "ping"
+    public commandDescription = "Ping the bot"
+
+    public isMenuCommand = true
+
+    async execute(ctx: CommandContext<Context>): Promise<void> {
+        await ctx.reply("pong!!!")
+    }
+ }
