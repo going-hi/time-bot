@@ -17,21 +17,12 @@ export class TimeCommand extends AbstractCommand {
       return
     }
     const params = this.parseArgs(text);
-    const saveCities  = await this.getSaveCities(chatId)
+    const saveCities  = await this.citiesRepository.getCitiesByChatId(chatId)
     const result = await this.handleParams(params, saveCities);
  
 
     await ctx.reply(result);
   } 
-
-  private async getSaveCities(chatId: number): Promise<string[]>{
-    const citiesRaw = await this.cacheSqliteService.get(`chatik:${chatId}:cities`)
-    if(!citiesRaw) {
-      return []
-    }
-  
-    return citiesRaw.split(',')
-  }
 
   private async handleParams(params: string[], saveCities: string[]): Promise<string> {
     const { isAllCitiesNow, isWillTime } = this.isCommandByParams(params, saveCities);

@@ -1,3 +1,4 @@
+import { CitiesRepository } from "@/cities";
 import { CacheSqliteService } from "@/core/cache";
 import { GeminiService } from "@/gemini";
 import { TimezoneApiService } from "@/timezone-api";
@@ -9,12 +10,12 @@ export abstract class AbstractCommand {
     public isMenuCommand = false
     protected geminiService: GeminiService
     protected timezoneApiService: TimezoneApiService
-    protected cacheSqliteService: CacheSqliteService
+    protected citiesRepository: CitiesRepository
 
-    constructor(geminiService: GeminiService, timezoneApiService: TimezoneApiService, cacheSqliteService: CacheSqliteService) {
+    constructor(geminiService: GeminiService, timezoneApiService: TimezoneApiService, citiesRepository: CitiesRepository) {
         this.geminiService = geminiService
         this.timezoneApiService = timezoneApiService
-        this.cacheSqliteService = cacheSqliteService
+        this.citiesRepository = citiesRepository
     }
 
     abstract execute(ctx:  CommandContext<Context>): Promise<void>;

@@ -12,7 +12,7 @@ export class SetCityCommand extends AbstractCommand {
     const params = this.parseArgs(text);
     const chatId = ctx.message?.chat.id!;
 
-    const cities = await this.getSaveCities(chatId);
+    const cities = await this.citiesRepository.getCitiesByChatId(chatId);
 
     const messageCities = cities.length
       ? `Города доступные сейчас ${cities.join(', ')}`
@@ -28,23 +28,7 @@ export class SetCityCommand extends AbstractCommand {
 
     const filterCities = Array.from(new Set(cities))
 
-    await this.saveCities(chatId, filterCities)
+    await this.citiesRepository.save(chatId, filterCities)
     await ctx.reply(`Города для отслеживания времени: ${filterCities.join(', ')}`);
-  }
-
-  private async saveCities(chatId: number, cities: string[]) {
-    const key = `chatik:${chatId}:cities`;
-    await this.cacheSqliteService.set(key, cities.join(','));
-  }
-
-  private async getSaveCities(chatId: number): Promise<string[]> {
-    const citiesRaw = await this.cacheSqliteService.get(
-      `chatik:${chatId}:cities`,
-    );
-    if (!citiesRaw) {
-      return [];
-    }
-
-    return citiesRaw.split(',');
   }
 }

@@ -5,6 +5,7 @@ import { COMMANDS, AbstractCommand } from './commands';
 import { GeminiService } from '@/gemini';
 import { TimezoneApiService } from '@/timezone-api';
 import { CacheSqliteService } from '@/core/cache';
+import { CitiesRepository } from '@/cities';
 
 @Injectable()
 export class BotService {
@@ -15,7 +16,7 @@ export class BotService {
     private readonly configService: ConfigService,
     private readonly geminiService: GeminiService,
     private readonly timezoneApiService: TimezoneApiService,
-    private readonly cacheSqliteService: CacheSqliteService,
+    private readonly citiesRepository: CitiesRepository,
   ) {
     const token = configService.get('BOT_TOKEN');
     this.bot = new Bot(token);
@@ -32,7 +33,7 @@ export class BotService {
       const instance = new Command(
         this.geminiService,
         this.timezoneApiService,
-        this.cacheSqliteService,
+        this.citiesRepository,
       );
       if (instance.isMenuCommand) {
         this.menuCommands.push(instance);
