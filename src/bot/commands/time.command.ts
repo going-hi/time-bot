@@ -43,7 +43,8 @@ export class TimeCommand extends AbstractCommand {
   private async handleWillTime(params: string[]): Promise<string> {
     let [time, firstCity, ...citiesParams] = params;
 
-    if (!cities) {
+    console.log({ time, firstCity, citiesParams });
+    if (!citiesParams.length) {
       citiesParams = cities;
     }
 
