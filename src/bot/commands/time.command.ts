@@ -1,7 +1,5 @@
-import { writeFile, writeFileSync } from 'fs';
 import { AbstractCommand } from './abstract.command';
 import { Context, CommandContext } from 'grammy';
-import { cities } from './set-city.command';
 import { getPromptTimezone } from '../prompts';
 import { DateTime } from 'luxon';
 
@@ -13,22 +11,37 @@ export class TimeCommand extends AbstractCommand {
   async execute(ctx: CommandContext<Context>): Promise<void> {
     const text = ctx.message?.text || '';
 
+    const chatId = ctx.message?.chat.id!
+    
+    if (ctx.message?.from.id === 6139896342) {
+      return
+    }
     const params = this.parseArgs(text);
-    const result = await this.handleParams(params);
+    const saveCities  = await this.getSaveCities(chatId)
+    const result = await this.handleParams(params, saveCities);
+ 
 
     await ctx.reply(result);
-    return;
+  } 
+
+  private async getSaveCities(chatId: number): Promise<string[]>{
+    const citiesRaw = await this.cacheSqliteService.get(`chatik:${chatId}:cities`)
+    if(!citiesRaw) {
+      return []
+    }
+  
+    return citiesRaw.split(',')
   }
 
-  private async handleParams(params: string[]): Promise<string> {
-    const { isAllCitiesNow, isWillTime } = this.isCommandByParams(params);
+  private async handleParams(params: string[], saveCities: string[]): Promise<string> {
+    const { isAllCitiesNow, isWillTime } = this.isCommandByParams(params, saveCities);
 
     let result = 'Не удалось распознать команду';;
 
     if (isAllCitiesNow) {
-      result = await this.handleAllCities(params);
+      result = await this.handleAllCities(params, saveCities);
     } else if (isWillTime) {
-      result = await this.handleWillTime(params);
+      result = await this.handleWillTime(params, saveCities);
     }
 
     return result
@@ -40,12 +53,12 @@ export class TimeCommand extends AbstractCommand {
     return rawData.trim().split(' ');
   }
 
-  private async handleWillTime(params: string[]): Promise<string> {
+  private async handleWillTime(params: string[], saveCities: string[]): Promise<string> {
     let [time, firstCity, ...citiesParams] = params;
 
     console.log({ time, firstCity, citiesParams });
     if (!citiesParams.length) {
-      citiesParams = cities;
+      citiesParams = saveCities;
     }
 
     const [timezoneFirstCity, ...timezones] = await this.getTimesZones([
@@ -84,11 +97,11 @@ export class TimeCommand extends AbstractCommand {
       return result
   }
 
-  private async handleAllCities(params: string[]): Promise<string> {
+  private async handleAllCities(params: string[], saveCities: string[]): Promise<string> {
     let citiesParams = params;
 
     if (!citiesParams.length) {
-      citiesParams = cities;
+      citiesParams = saveCities
     }
 
     const timezones = await this.getTimesZones(citiesParams);
@@ -100,7 +113,7 @@ export class TimeCommand extends AbstractCommand {
     const res = results.reduce<Record<string, string>>(
       (acc, current, index) => {
         if (current === 'ERROR_TIMEZONE') return acc;
-        acc[cities[index]] = current;
+        acc[citiesParams[index]] = current;
         return acc;
       },
       {},
@@ -130,8 +143,8 @@ export class TimeCommand extends AbstractCommand {
     return param.length === 5 && param[2] === ':';
   }
 
-  private isCommandByParams(params: string[]) {
-    const isAllCitiesNow = params.length === 0 || (params.length === 1 && params[0] === 'now');
+  private isCommandByParams(params: string[], saveCities: string[]) {
+    const isAllCitiesNow = (params.length === 0 && saveCities.length) || params.length
     const isWillTime = params.length >= 2 && this.isTime(params[0]);
 
     return {
