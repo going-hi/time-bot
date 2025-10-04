@@ -1,6 +1,8 @@
 import { AbstractCommand } from "./abstract.command";
 import { Context, CommandContext } from "grammy";
 
+export const cities: string[] = ['Москва', 'Лондон', 'Нью-Йорк', 'Астана'];
+
 export class SetCityCommand extends AbstractCommand {
     public commandName = "setcity"
     public commandDescription = `Добавляет город для отслеживания времени ex: ${this.commandName} Москва`
@@ -8,9 +10,9 @@ export class SetCityCommand extends AbstractCommand {
     public isMenuCommand = true
 
     async execute(ctx: CommandContext<Context>): Promise<void> {
-        await ctx.reply("pong!!!")
         const text = ctx.message?.text || ""
         const params = this.parseArgs(text)
-        
+        cities.push(...params)
+        await ctx.reply(`Города для отслеживания времени: ${cities.join(", ")}`)
     }
 }

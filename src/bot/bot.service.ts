@@ -4,6 +4,7 @@ import { Bot } from "grammy"
 import { COMMANDS } from "./commands";
 import { AbstractCommand } from "./commands";
 import { GeminiService } from "@/gemini";
+import { TimezoneApiService } from "@/timezone-api";
 
 @Injectable()
 export class BotService {
@@ -11,7 +12,7 @@ export class BotService {
     private menuCommands: AbstractCommand[] = []
     
 
-    constructor(private readonly configService: ConfigService, private readonly geminiService: GeminiService) {
+    constructor(private readonly configService: ConfigService, private readonly geminiService: GeminiService, private readonly timezoneApiService: TimezoneApiService) {
         const token = configService.get("BOT_TOKEN");
         this.bot = new Bot(token);
 
@@ -24,7 +25,7 @@ export class BotService {
 
     private handleCommands() {
         for (const Command of COMMANDS) { 
-            const instance = new Command(this.geminiService)
+            const instance = new Command(this.geminiService, this.timezoneApiService)
             if (instance.isMenuCommand) {
                 this.menuCommands.push(instance)
             }
