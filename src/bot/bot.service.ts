@@ -3,6 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { Bot } from "grammy"
 import { COMMANDS } from "./commands";
 import { AbstractCommand } from "./commands";
+import { GeminiService } from "@/gemini";
 
 @Injectable()
 export class BotService {
@@ -10,7 +11,7 @@ export class BotService {
     private menuCommands: AbstractCommand[] = []
     
 
-    constructor(configService: ConfigService) {
+    constructor(private readonly configService: ConfigService, private readonly geminiService: GeminiService) {
         const token = configService.get("BOT_TOKEN");
         this.bot = new Bot(token);
 
@@ -23,8 +24,7 @@ export class BotService {
 
     private handleCommands() {
         for (const Command of COMMANDS) { 
-            const instance = new Command()
-
+            const instance = new Command(this.geminiService)
             if (instance.isMenuCommand) {
                 this.menuCommands.push(instance)
             }
