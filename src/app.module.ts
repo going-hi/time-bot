@@ -5,6 +5,7 @@ import { BotModule } from './bot/bot.module';
 import { GeminiModule } from './gemini';
 import { TimezoneApiModule } from './timezone-api';
 import { CacheSqliteModule } from './core/cache';
+import { CitiesModule } from './cities/cities.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { CacheSqliteModule } from './core/cache';
     GeminiModule,
     TimezoneApiModule,
     CacheSqliteModule,
+    CitiesModule
   ],
 })
 export class AppModule {}
