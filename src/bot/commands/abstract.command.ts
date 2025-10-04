@@ -18,7 +18,7 @@ export abstract class AbstractCommand {
         this.citiesRepository = citiesRepository
     }
 
-    abstract execute(ctx:  CommandContext<Context>): Promise<void>;
+    abstract execute(ctx: CommandContext<Context>): Promise<void>;
 
     protected parseArgs(text: string): string[] {
         return text.split(" ").slice(1);

@@ -20,6 +20,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@grammyjs/ratelimiter": "^1.2.1",
     "@keyv/sqlite": "^4.0.5",
     "@nestjs/cache-manager": "^3.0.1",
     "@nestjs/common": "^11.0.1",

@@ -13,9 +13,6 @@ export class TimeCommand extends AbstractCommand {
 
     const chatId = ctx.message?.chat.id!
     
-    if (ctx.message?.from.id === 6139896342) {
-      return
-    }
     const params = this.parseArgs(text);
     const saveCities  = await this.citiesRepository.getCitiesByChatId(chatId)
     const result = await this.handleParams(params, saveCities);

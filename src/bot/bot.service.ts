@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Bot, GrammyError, HttpError } from 'grammy';
+import { Bot, CommandContext, Context, GrammyError, HttpError } from 'grammy';
 import { COMMANDS, AbstractCommand } from './commands';
 import { GeminiService } from '@/gemini';
 import { TimezoneApiService } from '@/timezone-api';
-import { CacheSqliteService } from '@/core/cache';
+import { limit } from '@grammyjs/ratelimiter';
 import { CitiesRepository } from '@/cities';
 
 @Injectable()
@@ -21,11 +21,34 @@ export class BotService {
     const token = configService.get('BOT_TOKEN');
     this.bot = new Bot(token);
 
+    this.bot.use(
+      limit({
+        timeFrame: 2000,
+        limit: 3,
+        onLimitExceeded: async (ctx: CommandContext<Context>) => {
+          const authorId = ctx.message?.from.id;
+
+          const paulId = 6139896342;
+          if (authorId === paulId) {
+            await ctx.reply(
+              'Павел, хватит хуярить меня запросами, успокойся пожалуйста',
+            );
+            return;
+          }
+
+          await ctx.reply('Rate limit ошибка, успокойся');
+        },
+        keyGenerator: (ctx: CommandContext<Context>) => {
+          return ctx.from?.id.toString();
+        },
+      }),
+    );
+
     this.handleCommands();
     this.handleMenuCommands();
 
     this.start();
-    this.errorHandler()
+    this.errorHandler();
   }
 
   private handleCommands() {
@@ -69,7 +92,7 @@ export class BotService {
       } else {
         console.error('Unknown error:', e);
       }
-      ctx.reply(`Ошибка повторите попозже! ${err.message}`)
+      ctx.reply(`Ошибка повторите попозже! ${err.message}`);
     });
   }
 }
