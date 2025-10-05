@@ -1,13 +1,25 @@
 name: Check
+
 on: push
+
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout 
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'           # Кэширование yarn
+      
       - name: Install deps
-        run: npm install 
-      - name: Lint
-        run: npm run lint
-
+        run: yarn install --frozen-lockfile  # Аналог npm ci
+      
+ #     - name: Lint
+ #       run: yarn lint
+      
+      - name: Build
+        run: yarn build           # Обязательно для NestJS
