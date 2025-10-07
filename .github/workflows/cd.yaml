@@ -7,7 +7,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: Bad0Request/time-bot
+  IMAGE_NAME: bad0request/time-bot
 
 jobs:
   build-and-push:
