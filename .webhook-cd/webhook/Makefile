@@ -10,7 +10,7 @@ update:
 	docker pull ghcr.io/$(LOGIN)/$(IMAGE_NAME):latest
 	make stop
 	make rm
-	docker run -d --name $(NAME_CONTAINER) $(IMAGE_NAME)
+	docker run -d --name $(NAME_CONTAINER) ghcr.io/$(LOGIN)/$(IMAGE_NAME):latest
 
 rm:
 	if docker inspect $(NAME_CONTAINER) >/dev/null 2>&1; then \
