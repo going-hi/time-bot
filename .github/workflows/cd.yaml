@@ -25,7 +25,7 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ secrets.REGISTRY_LOGIN }}
           password: ${{ secrets.REGISTRY_TOKEN }}
-      
+          
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
