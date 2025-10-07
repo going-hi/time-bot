@@ -15,7 +15,7 @@ jobs:
         - name: notify webhook
           run: |
             response_code=$(curl -s -o /dev/null -w "%{http_code}" \
-              --header "Authorization: ${{env.WEBHOOK_SECRET_TOKEN}}" \
+              --header "Authorization: ${{env.WEBHOOK_TOKEN}}" \
               ${{env.WEBHOOK_URL}})
     
             if [ "$response_code" -eq 200 ]; then
