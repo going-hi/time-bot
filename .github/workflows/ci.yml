@@ -16,10 +16,8 @@ jobs:
           cache: 'yarn'           # Кэширование yarn
       
       - name: Install deps
-        run: yarn install --frozen-lockfile  # Аналог npm ci
-      
- #     - name: Lint
- #       run: yarn lint
-      
+        run: yarn install --frozen-lockfile  
+
       - name: Build
-        run: yarn build           # Обязательно для NestJS
+        run: yarn build           
+      
