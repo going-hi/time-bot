@@ -1,0 +1,30 @@
+on:
+    workflow_run:
+        workflows: ["CD with Docker"]       
+        types: [completed]       
+env:
+    WEBHOOK_SECRET_TOKEN: ${{secrets.WEBHOOK_SECRET_TOKEN}}
+    WEBHOOK_URL: ${{secrets.WEBHOOK_URL}}
+
+jobs:
+    webhook-notify:        
+        runs-on: ubuntu-latest
+        if: ${{ github.event.workflow_run.conclusion == 'success' }}
+        steps:
+        - uses: actions/checkout@v3
+        - name: notify webhook
+          run: |
+            response_code=$(curl -s -o /dev/null -w "%{http_code}" \
+              --header "X-Secret-Key:${{env.WEBHOOK_SECRET_TOKEN}}" \
+              ${{env.WEBHOOK_URL}})
+    
+            if [ "$response_code" -eq 200 ]; then
+              echo "✅ Webhook successful (HTTP 200)"
+              exit 0
+            elif [ "$response_code" -eq 400 ] || [ "$response_code" -eq 403 ]; then
+              echo "⚠️ Webhook client error (HTTP $response_code) - check configuration"
+              exit 0  # Все равно не падаем, но предупреждаем
+            else
+              echo "❌ Webhook failed with HTTP $response_code"
+              exit 1
+            fi
