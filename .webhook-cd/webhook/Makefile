@@ -8,5 +8,12 @@ login:
 update:
         docker pull ghcr.io/$(LOGIN)/$(IMAGE_NAME):latest
         docker stop $(NAME_CONTAINER)
-        docker rm $(NAME_CONTAINER) || true
+        make rm
         docker run -d --name $(NAME_CONTAINER)  $(IMAGE_NAME)
+rm:
+	if docker inspect $(NAME_CONTAINER) >/dev/null 2>&1; then \
+		echo "Удаляю нахуй  контейнер $(NAME_CONTAINER)..."; \
+		docker rm $(NAME_CONTAINER); \
+	else \
+		echo "Контейнер $(NAME_CONTAINER) не найден — пропускаю."; \
+	fi
