@@ -10,7 +10,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: bad0request/time-bot
-  TELEGRAM_TO: -1003170352623
+  TELEGRAM_TO: 1673506569
 
 jobs:
   build-and-push:
