@@ -1,7 +1,4 @@
-LOGIN = -
-TOKEN_GH = -
-IMAGE_NAME = time-bot
-NAME_CONTAINER = bot-ebal-nahui
+include docker.env
 
 login:
 	echo $(TOKEN_GH) | docker login ghcr.io -u $(LOGIN) --password-stdin
@@ -10,7 +7,7 @@ update:
 	docker pull ghcr.io/$(LOGIN)/$(IMAGE_NAME):latest
 	make stop
 	make rm
-	docker run -d --name $(NAME_CONTAINER) ghcr.io/$(LOGIN)/$(IMAGE_NAME):latest
+	docker run --env-file ./.env -d --name $(NAME_CONTAINER) ghcr.io/$(LOGIN)/$(IMAGE_NAME):latest
 
 rm:
 	if docker inspect $(NAME_CONTAINER) >/dev/null 2>&1; then \
