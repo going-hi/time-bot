@@ -1,12 +1,12 @@
 name: CD with Docker
 
 on:
-  push:
-    branches: [main]
-  workflow_dispatch:  # Разрешить ручной запуск
   workflow_run:
-        workflows: ["CI"]       
-        types: [completed]       
+    workflows: ["CI"]
+    types:
+      - completed
+
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: bad0request/time-bot
@@ -14,6 +14,7 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: read
       packages: write
