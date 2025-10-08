@@ -10,7 +10,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: bad0request/time-bot
-  TELEGRAM_TO: 1673506569
+  TELEGRAM_TO: -1003170352623
 
 jobs:
   build-and-push:
@@ -27,8 +27,8 @@ jobs:
           to: ${{ env.TELEGRAM_TO }} 
           token: ${{ secrets.BOT_TOKEN }}
           message: |
-            🚀 Deploy Started
-            📦 Repository: ${{ github.repository }}
+            🚀 Мега Деплой стартовал Епта
+            📦 Rep: ${{ github.repository }}
             🔖 Image: ${{ env.IMAGE_NAME }}
             ⏰ Time: ${{ github.event.workflow_run.created_at }}
             📎 Workflow: ${{ github.event.workflow_run.name }}
