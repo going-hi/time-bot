@@ -10,7 +10,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: bad0request/time-bot
-  TELEGRAM_TO
+  TELEGRAM_TO: -1003170352623
 
 jobs:
   build-and-push:
@@ -24,7 +24,7 @@ jobs:
       - name: Notify deploy start
         uses: appleboy/telegram-action@master
         with:
-          to: -1003170352623 
+          to: ${{ env.TELEGRAM_TO }} 
           token: ${{ secrets.TELEGRAM_TOKEN }}
           message: |
             🚀 Deploy Started
@@ -49,3 +49,31 @@ jobs:
         run: |
           docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
           docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+          # Уведомление об успешном завершении
+      - name: Notify deploy success
+        if: success()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ env.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: |
+            ✅ Deploy Successful!
+            📦 Repository: ${{ github.repository }}
+            🐳 Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+            🏷️ Tags: ${{ github.sha }}, latest
+            ⏱️ Duration: ${{ job.status }} 
+            🔗 Registry: ${{ env.REGISTRY }}
+
+      # Уведомление о неудачном деплое
+      - name: Notify deploy failure
+        if: failure()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ env.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: |
+            ❌ Deploy Failed!
+            📦 Repository: ${{ github.repository }}
+            🐳 Image: ${{ env.IMAGE_NAME }}
+            ⚠️ Check workflow for details: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
