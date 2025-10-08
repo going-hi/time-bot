@@ -8,7 +8,7 @@ export class PingCommand extends AbstractCommand {
     public isMenuCommand = true
 
     async execute(ctx: CommandContext<Context>): Promise<void> {
-        await ctx.reply("pong!!!", {
+        await ctx.reply("pong pong pong pong!!!", {
             reply_parameters: { message_id: ctx.msg.message_id },
         })
     }
