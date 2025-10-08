@@ -25,7 +25,7 @@ jobs:
         uses: appleboy/telegram-action@master
         with:
           to: ${{ env.TELEGRAM_TO }} 
-          token: ${{ secrets.TELEGRAM_TOKEN }}
+          token: ${{ secrets.BOT_TOKEN }}
           message: |
             🚀 Deploy Started
             📦 Repository: ${{ github.repository }}
