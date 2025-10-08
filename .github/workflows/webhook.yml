@@ -1,30 +1,62 @@
 on:
-    workflow_run:
-        workflows: ["CD with Docker"]       
-        types: [completed]       
+  workflow_run:
+    workflows: ["CD with Docker"]       
+    types: [completed]       
 env:
-    WEBHOOK_TOKEN: ${{secrets.WEBHOOK_TOKEN}}
-    WEBHOOK_URL: ${{secrets.WEBHOOK_URL}}
+  WEBHOOK_TOKEN: ${{ secrets.WEBHOOK_TOKEN }}
+  WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+  TELEGRAM_TO: -1003170352623
 
 jobs:
-    webhook-notify:        
-        runs-on: ubuntu-latest
-        if: ${{ github.event.workflow_run.conclusion == 'success' }}
-        steps:
-        - uses: actions/checkout@v3
-        - name: notify webhook
-          run: |
-            response_code=$(curl -s -o /dev/null -w "%{http_code}" \
-              --header "Authorization: ${{env.WEBHOOK_TOKEN}}" \
-              ${{env.WEBHOOK_URL}})
+  webhook-notify:        
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: notify webhook
+        id: webhook
+        run: |
+          response_code=$(curl -s -o /dev/null -w "%{http_code}" \
+            --header "Authorization: ${{env.WEBHOOK_TOKEN}}" \
+            ${{env.WEBHOOK_URL}})
 
-            if [ "$response_code" -eq 200 ]; then
-              echo "✅ Webhook successful (HTTP 200)"
-              exit 0
-            elif [ "$response_code" -eq 400 ] || [ "$response_code" -eq 401 ] || [ "$response_code" -eq 403 ]; then
-              echo "⚠️ Webhook client error (HTTP $response_code) - check configuration"
-              exit 1
-            else
-              echo "❌ Webhook failed with HTTP $response_code"
-              exit 1
-            fi
+          # СОХРАНИТЕ response_code В OUTPUTS
+          echo "response_code=$response_code" >> $GITHUB_OUTPUT
+
+          if [ "$response_code" -eq 200 ]; then
+            echo "✅ Webhook successful (HTTP 200)"
+          elif [ "$response_code" -eq 400 ] || [ "$response_code" -eq 401 ] || [ "$response_code" -eq 403 ]; then
+            echo "⚠️ Webhook client error (HTTP $response_code) - check configuration"
+          else
+            echo "❌ Webhook failed with HTTP $response_code"
+          fi
+
+      # УСПЕШНЫЙ WEBHOOK (200)
+      - name: Notify webhook success
+        if: steps.webhook.outputs.response_code == '200'
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ env.TELEGRAM_TO }}
+          token: ${{ secrets.BOT_TOKEN }}
+          message: |
+            ✅ Webhook Successful!
+            📡 Status: HTTP 200 OK
+            💫 Deployment completed successfully
+            🔗 Webhook: ${{ env.WEBHOOK_URL }}
+
+      # ОШИБКИ КЛИЕНТА (400, 401, 403)
+      - name: Notify webhook client error
+        if: steps.webhook.outputs.response_code == '400' || steps.webhook.outputs.response_code == '401' || steps.webhook.outputs.response_code == '403'
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ env.TELEGRAM_TO }}
+          token: ${{ secrets.BOT_TOKEN }}
+          message: |
+            ⚠️ Webhook Client Error
+            📡 Status: HTTP ${{ steps.webhook.outputs.response_code }}
+            🔍 Issue: 
+            ${{ steps.webhook.outputs.response_code == '400' && 'Bad Request - Check webhook data' || '' }}
+            ${{ steps.webhook.outputs.response_code == '401' && 'Unauthorized - Invalid token' || '' }}
+            ${{ steps.webhook.outputs.response_code == '403' && 'Forbidden - Access denied' || '' }}
+            🔗 Webhook: ${{ env.WEBHOOK_URL }}
