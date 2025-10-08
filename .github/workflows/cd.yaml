@@ -10,6 +10,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: bad0request/time-bot
+  TELEGRAM_TO
 
 jobs:
   build-and-push:
@@ -19,6 +20,19 @@ jobs:
       contents: read
       packages: write
     steps:
+       # Уведомление о начале деплоя
+      - name: Notify deploy start
+        uses: appleboy/telegram-action@master
+        with:
+          to: -1003170352623 
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: |
+            🚀 Deploy Started
+            📦 Repository: ${{ github.repository }}
+            🔖 Image: ${{ env.IMAGE_NAME }}
+            ⏰ Time: ${{ github.event.workflow_run.created_at }}
+            📎 Workflow: ${{ github.event.workflow_run.name }}
+
       - name: Checkout code
         uses: actions/checkout@v4
 
