@@ -1,6 +1,9 @@
 import { AbstractCommand } from './abstract.command'
 import { ContextBotType } from '../types'
 
+// TODO: В идеале дописать логичку добавления уведомления и отключения уведомления
+// TODO: 
+
 export class SetNotificationCommand extends AbstractCommand {
 	public commandName = 'setnot'
 	public commandDescription = `Секрет команда /${this.commandName} <hh:mm> (example 10:00) !Укажите время в МСК`
@@ -19,6 +22,8 @@ export class SetNotificationCommand extends AbstractCommand {
 
 		await this.imageTimeUserRepository.save(chatId, time)
 		await ctx.reply(`Ваше время установлено! Вам придет уведомление в ${time} по МСК`)
+
+		// CREATE JOBS
 	}
 
 	private isTimeFormat(param: string): boolean {

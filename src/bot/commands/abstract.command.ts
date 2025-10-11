@@ -4,7 +4,7 @@ import { ImageHistoryRepository } from '@/image-histories'
 import { ImageTimeUsersRepository } from '@/image-time-users'
 import { TimezoneApiService } from '@/timezone-api'
 import { ContextBotType } from '../types'
-
+import { ImageCommonRepository } from '@/image-common'
 
 export interface ICommand {
 	commandName: string
@@ -14,7 +14,7 @@ export interface ICommand {
 
 	execute(ctx: ContextBotType): Promise<void>
 }
-export abstract class AbstractCommand implements  ICommand{
+export abstract class AbstractCommand implements ICommand {
 	public commandName: string
 	public commandDescription: string
 	public isMenuCommand = false
@@ -23,20 +23,23 @@ export abstract class AbstractCommand implements  ICommand{
 	protected timezoneApiService: TimezoneApiService
 	protected citiesRepository: CitiesRepository
 	protected imageHistoryRepository: ImageHistoryRepository
-    protected imageTimeUserRepository: ImageTimeUsersRepository
+	protected imageTimeUserRepository: ImageTimeUsersRepository
+	protected imageCommonRepository: ImageCommonRepository
 
 	constructor(
 		geminiService: GeminiService,
 		timezoneApiService: TimezoneApiService,
 		citiesRepository: CitiesRepository,
 		imageHistoryRepository: ImageHistoryRepository,
-        imageTimeUserRepository: ImageTimeUsersRepository
+		imageTimeUserRepository: ImageTimeUsersRepository,
+		imageCommonRepository: ImageCommonRepository
 	) {
 		this.geminiService = geminiService
 		this.timezoneApiService = timezoneApiService
 		this.citiesRepository = citiesRepository
 		this.imageHistoryRepository = imageHistoryRepository
-        this.imageTimeUserRepository = imageTimeUserRepository
+		this.imageTimeUserRepository = imageTimeUserRepository
+		this.imageCommonRepository = imageCommonRepository
 	}
 
 	abstract execute(ctx: ContextBotType): Promise<void>
