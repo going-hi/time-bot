@@ -17,7 +17,7 @@ export class CitiesRepository {
   public async getCitiesByChatId(chatId: number): Promise<string[]> {
     const key = this.getKey(chatId);
     const citiesRaw = await this.cacheSqliteService.get(key);
-    if (!citiesRaw) {
+    if (!citiesRaw || !citiesRaw.length) {
       return [];
     }
 
