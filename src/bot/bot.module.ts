@@ -5,6 +5,7 @@ import { TimezoneApiModule } from '@/timezone-api'
 import { CitiesModule } from '@/cities/cities.module'
 import { ImageHistoryModule } from '@/image-histories'
 import { ImageTimeUsersModule } from '@/image-time-users'
+import { ImageCommonModule } from '@/image-common'
 
 @Module({
 	imports: [
@@ -12,7 +13,8 @@ import { ImageTimeUsersModule } from '@/image-time-users'
 		TimezoneApiModule,
 		CitiesModule,
 		ImageHistoryModule,
-		ImageTimeUsersModule
+		ImageTimeUsersModule,
+		ImageCommonModule
 	],
 	providers: [BotService]
 })

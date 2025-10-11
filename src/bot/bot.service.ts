@@ -10,20 +10,25 @@ import { conversations, createConversation } from '@grammyjs/conversations'
 import { ImageHistoryRepository } from '@/image-histories'
 import { ImageTimeUsersRepository } from '@/image-time-users'
 import { Cron, CronExpression } from '@nestjs/schedule'
-import { images } from './commands/add-image.command'
 import { CALLBACK_QUERIES } from './callback-queries'
 import { ContextBotType } from './types'
 import { CONVERSATIONS } from './conversations'
 import { estimateCallbackQueryName } from './callback-queries/estimate.callback-query'
 import { limitParams } from './params'
+import { AbstractCronCommand } from './cron-commands/abstract.cron-command'
+import { CRON_COMMANDS } from './cron-commands'
+import { ImageCommonRepository } from '@/image-common'
 
 const BOT_DEVELOPER = 2332
 const paul = 6139896342
+
+const chatPodId = -1003170352623
 
 @Injectable()
 export class BotService {
 	private bot: Bot<ContextBotType>
 	private menuCommands: AbstractCommand[] = []
+	private crons: AbstractCronCommand[] = []
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -31,7 +36,8 @@ export class BotService {
 		private readonly timezoneApiService: TimezoneApiService,
 		private readonly citiesRepository: CitiesRepository,
 		private readonly imageHistoryRepository: ImageHistoryRepository,
-		private readonly imageTimeUserRepository: ImageTimeUsersRepository
+		private readonly imageTimeUserRepository: ImageTimeUsersRepository,
+		private readonly imageCommonRepository: ImageCommonRepository
 	) {
 		const token = configService.get('BOT_TOKEN')
 		this.bot = new Bot<ContextBotType>(token)
@@ -50,6 +56,7 @@ export class BotService {
 		this.bot.use(limit(limitParams))
 		this.handleCommands()
 		this.handleMenuCommands()
+		this.handleCronCommands()
 		this.bot.use(conversations())
 		this.handleConversations()
 		this.handleCallbackQueries()
@@ -65,7 +72,8 @@ export class BotService {
 				this.timezoneApiService,
 				this.citiesRepository,
 				this.imageHistoryRepository,
-				this.imageTimeUserRepository
+				this.imageTimeUserRepository,
+				this.imageCommonRepository
 			)
 			if (instance.isMenuCommand) {
 				this.menuCommands.push(instance)
@@ -97,6 +105,17 @@ export class BotService {
 			const fn = instance.execute
 			Object.defineProperty(fn, 'name', { value: instance.name })
 			this.bot.use(createConversation(fn))
+		}
+	}
+
+	private handleCronCommands() {
+		for (const CronCommand of CRON_COMMANDS) {
+			const instance = new CronCommand(
+				this.imageHistoryRepository,
+				this.imageTimeUserRepository,
+				this.imageCommonRepository
+			)
+			this.crons.push(instance)
 		}
 	}
 
@@ -147,21 +166,75 @@ export class BotService {
 		})
 	}
 
+	private getTime() {
+		const now = new Date()
+
+		const minutes = now.getMinutes().toString().padStart(2, '0')
+		const seconds = now.getSeconds().toString().padStart(2, '0')
+
+		const time = `${minutes}:${seconds}`
+		return time
+	}
+
+	private isWithinFiveMinutes(now: string, target: string): boolean {
+		const toMinutes = (t: string) => {
+			const [h, m] = t.split(':').map(Number)
+			return h * 60 + m
+		}
+
+		const diff = toMinutes(target) - toMinutes(now)
+		return diff <= 5 && diff > 0
+	}
+
+	// НУЖНО добавить изображение
 	@Cron(CronExpression.EVERY_MINUTE)
 	async handleCron() {
 		console.log('HUIII')
-		const chatId = -1003170352623
+		const time = this.getTime()
 
-		const keyboard = new InlineKeyboard().text('Оценить пига🐷', estimateCallbackQueryName)
+		// const timePaul = await this.imageTimeUserRepository.getTime(paul)
+		const timePaul = '23:01'
 
-		if (!images.length) {
+		if (!timePaul) {
 			return
 		}
 
-		await this.bot.api.sendPhoto(chatId, images[0], {
+		const images = await this.imageCommonRepository.getImages()
+
+		if (this.isWithinFiveMinutes(time, timePaul) && !images) {
+			await this.bot.api.sendMessage(
+				chatPodId,
+				'Добавьте изображение! Осталось около 5 минут до публикации'
+			)
+			return
+		}
+
+		if (!images.length) {
+			await this.bot.api.sendMessage(
+				chatPodId,
+				'Добавьте изображение! Сообщение не оправилось('
+			)
+		}
+
+
+		if(time !== timePaul) {
+			return
+		}
+		
+
+		const keyboard = new InlineKeyboard().text('Оценить пига🐷', estimateCallbackQueryName)
+
+		const image = images.shift()!
+
+		await this.bot.api.sendPhoto(paul, image, {
 			caption: 'Вот твой новый пиг!!! Добрае утра!',
 			reply_markup: keyboard
 		})
 
+		await this.bot.api.sendPhoto(chatPodId, image, {
+			caption: 'Вот твой новый пиг!!! Добрае утра!',
+			reply_markup: keyboard
+		})
+		await this.imageCommonRepository.saveImages(images)
 	}
 }
