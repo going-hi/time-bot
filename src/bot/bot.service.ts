@@ -216,11 +216,9 @@ export class BotService {
 			)
 		}
 
-
-		if(time !== timePaul) {
+		if (time !== timePaul) {
 			return
 		}
-		
 
 		const keyboard = new InlineKeyboard().text('Оценить пига🐷', estimateCallbackQueryName)
 
@@ -235,6 +233,60 @@ export class BotService {
 			caption: 'Вот твой новый пиг!!! Добрае утра!',
 			reply_markup: keyboard
 		})
+		await this.imageCommonRepository.saveImages(images)
+	}
+
+	@Cron(CronExpression.EVERY_MINUTE)
+	async handleCronPaul() {
+		console.log('HUIII')
+		const time = this.getTime()
+
+		// const timePaul = await this.imageTimeUserRepository.getTime(paul)
+		const timePaul = '23:01'
+
+		if (!timePaul) {
+			return
+		}
+
+		const images = await this.imageCommonRepository.getImages()
+		console.log(images, "IMAGESONE")
+		// if (this.isWithinFiveMinutes(time, timePaul) && !images) {
+		// 	await this.bot.api.sendMessage(
+		// 		chatPodId,
+		// 		'Добавьте изображение! Осталось около 5 минут до публикации'
+		// 	)
+		// 	return
+		// }
+
+		// if (time !== timePaul) {
+		// 	return
+		// }
+
+		if (!images.length) {
+			// await this.bot.api.sendMessage(
+			// 	chatPodId,
+			// 	'Добавьте изображение! Сообщение не оправилось('
+			// )
+
+			console.log("ДОбавь изображение сука")
+			return
+		}
+
+		const keyboard = new InlineKeyboard().text('Оценить пига🐷', estimateCallbackQueryName)
+
+		const image = images.shift()!
+
+		await this.bot.api.sendPhoto(paul, image, {
+			caption: 'Вот твой новый пиг!!! Добрае утра!',
+			reply_markup: keyboard
+		})
+
+		await this.bot.api.sendPhoto(chatPodId, image, {
+			caption: 'Вот твой новый пиг!!! Добрае утра!',
+			reply_markup: keyboard
+		})
+
+		console.log(images, "IMAGES")
 		await this.imageCommonRepository.saveImages(images)
 	}
 }
