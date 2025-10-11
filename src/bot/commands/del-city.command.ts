@@ -1,5 +1,5 @@
-import { CommandContext, Context } from 'grammy';
 import { AbstractCommand } from './abstract.command';
+import { ContextBotType } from '../types';
 
 export class DelCityCommand extends AbstractCommand {
   public commandName = 'delcity';
@@ -8,7 +8,7 @@ export class DelCityCommand extends AbstractCommand {
   public isMenuCommand = true
 
 
-  public async execute(ctx: CommandContext<Context>): Promise<void> {
+  public async execute(ctx: ContextBotType): Promise<void> {
     const text = ctx.message?.text || ''
     const chatId = ctx.message?.chat.id!
     const params = this.parseArgs(text)

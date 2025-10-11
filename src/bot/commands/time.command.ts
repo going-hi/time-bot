@@ -1,145 +1,135 @@
-import { AbstractCommand } from './abstract.command';
-import { Context, CommandContext } from 'grammy';
-import { getPromptTimezone } from '../prompts';
-import { DateTime } from 'luxon';
+import { AbstractCommand } from './abstract.command'
+import { getPromptTimezone } from '../prompts'
+import { DateTime } from 'luxon'
+import { ContextBotType } from '../types'
 
 export class TimeCommand extends AbstractCommand {
-  public commandName = 'time';
-  public commandDescription = 'Бот для удобной работы с часовыми поясами.';
-  public isMenuCommand = true;
+	public commandName = 'time'
+	public commandDescription = 'Бот для удобной работы с часовыми поясами.'
+	public isMenuCommand = true
 
-  async execute(ctx: CommandContext<Context>): Promise<void> {
-    const text = ctx.message?.text || '';
+	async execute(ctx: ContextBotType): Promise<void> {
+		const text = ctx.message?.text || ''
 
-    const chatId = ctx.message?.chat.id!
-    
-    const params = this.parseArgs(text);
-    const saveCities  = await this.citiesRepository.getCitiesByChatId(chatId)
-    const result = await this.handleParams(params, saveCities);
- 
+		const chatId = ctx.message?.chat.id!
 
-    await ctx.reply(result);
-  } 
+		const params = this.parseArgs(text)
+		const saveCities = await this.citiesRepository.getCitiesByChatId(chatId)
+		const result = await this.handleParams(params, saveCities)
 
-  private async handleParams(params: string[], saveCities: string[]): Promise<string> {
-    const { isAllCitiesNow, isWillTime } = this.isCommandByParams(params, saveCities);
+		await ctx.reply(result)
+	}
 
-    let result = 'Не удалось распознать команду';;
+	private async handleParams(params: string[], saveCities: string[]): Promise<string> {
+		const { isAllCitiesNow, isWillTime } = this.isCommandByParams(params, saveCities)
 
-    if (isAllCitiesNow) {
-      result = await this.handleAllCities(params, saveCities);
-    } else if (isWillTime) {
-      result = await this.handleWillTime(params, saveCities);
-    }
+		let result = 'Не удалось распознать команду'
 
-    return result
-  }
+		if (isAllCitiesNow) {
+			result = await this.handleAllCities(params, saveCities)
+		} else if (isWillTime) {
+			result = await this.handleWillTime(params, saveCities)
+		}
 
-  private async getTimesZones(cities: string[]): Promise<string[]> {
-    const prompt = getPromptTimezone(cities.join(' '));
-    const rawData = await this.geminiService.generate(prompt);
-    return rawData.trim().split(' ');
-  }
+		return result
+	}
 
-  private async handleWillTime(params: string[], saveCities: string[]): Promise<string> {
-    let [time, firstCity, ...citiesParams] = params;
+	private async getTimesZones(cities: string[]): Promise<string[]> {
+		const prompt = getPromptTimezone(cities.join(' '))
+		const rawData = await this.geminiService.generate(prompt)
+		return rawData.trim().split(' ')
+	}
 
-    console.log({ time, firstCity, citiesParams });
-    if (!citiesParams.length) {
-      citiesParams = saveCities;
-    }
+	private async handleWillTime(params: string[], saveCities: string[]): Promise<string> {
+		let [time, firstCity, ...citiesParams] = params
 
-    const [timezoneFirstCity, ...timezones] = await this.getTimesZones([
-      firstCity,
-      ...citiesParams,
-    ]);
+		console.log({ time, firstCity, citiesParams })
+		if (!citiesParams.length) {
+			citiesParams = saveCities
+		}
 
-    const now = DateTime.now().setZone(timezoneFirstCity);
+		const [timezoneFirstCity, ...timezones] = await this.getTimesZones([
+			firstCity,
+			...citiesParams
+		])
 
-    const [hour, minute] = time.split(':').map(Number);
+		const now = DateTime.now().setZone(timezoneFirstCity)
 
-    const localTime = now.set({ hour, minute });
+		const [hour, minute] = time.split(':').map(Number)
 
-    const map = timezones.reduce<Record<string, string>>(
-      (acc, timezone, index) => {
-        const city = citiesParams[index];
-        const timeInCity = localTime.setZone(timezone).toFormat('HH:mm');
-        acc[city] = timeInCity;
-        return acc;
-      },
-      {},
-    );
+		const localTime = now.set({ hour, minute })
 
+		const map = timezones.reduce<Record<string, string>>((acc, timezone, index) => {
+			const city = citiesParams[index]
+			const timeInCity = localTime.setZone(timezone).toFormat('HH:mm')
+			acc[city] = timeInCity
+			return acc
+		}, {})
 
-    const citiesString = this.mapCities(map);
+		const citiesString = this.mapCities(map)
 
-    const result = `Когда в ${firstCity} будет ${time}, в других городах будет:\n${citiesString}`;
-    return result;
-  }
+		const result = `Когда в ${firstCity} будет ${time}, в других городах будет:\n${citiesString}`
+		return result
+	}
 
-  private mapCities(map: Record<string, string>): string {
-    const result = Object.keys(map)
-      .map((key) => `${key}: ${map[key]}`)
-      .join('\n');
+	private mapCities(map: Record<string, string>): string {
+		const result = Object.keys(map)
+			.map(key => `${key}: ${map[key]}`)
+			.join('\n')
 
-      return result
-  }
+		return result
+	}
 
-  private async handleAllCities(params: string[], saveCities: string[]): Promise<string> {
-    let citiesParams = params;
+	private async handleAllCities(params: string[], saveCities: string[]): Promise<string> {
+		let citiesParams = params
 
-    if (!citiesParams.length) {
-      citiesParams = saveCities
-    }
+		if (!citiesParams.length) {
+			citiesParams = saveCities
+		}
 
-    const timezones = await this.getTimesZones(citiesParams);
+		const timezones = await this.getTimesZones(citiesParams)
 
-    const results = timezones.map((timezone) =>
-      this.getTimeByTimezone(timezone),
-    );
+		const results = timezones.map(timezone => this.getTimeByTimezone(timezone))
 
-    const res = results.reduce<Record<string, string>>(
-      (acc, current, index) => {
-        if (current === 'ERROR_TIMEZONE') return acc;
-        acc[citiesParams[index]] = current;
-        return acc;
-      },
-      {},
-    );
+		const res = results.reduce<Record<string, string>>((acc, current, index) => {
+			if (current === 'ERROR_TIMEZONE') return acc
+			acc[citiesParams[index]] = current
+			return acc
+		}, {})
 
-    const resultString = this.mapCities(res);
-    return `Сейчас в городах:\n${resultString}`;
-  }
+		const resultString = this.mapCities(res)
+		return `Сейчас в городах:\n${resultString}`
+	}
 
-  private getTimeByTimezone(timezone: string): string {
-    try {
-      const now = new Date();
+	private getTimeByTimezone(timezone: string): string {
+		try {
+			const now = new Date()
 
-      const formatted = new Intl.DateTimeFormat('ru-RU', {
-        timeZone: timezone,
-        hour: '2-digit',
-        minute: '2-digit',
-      }).format(now);
+			const formatted = new Intl.DateTimeFormat('ru-RU', {
+				timeZone: timezone,
+				hour: '2-digit',
+				minute: '2-digit'
+			}).format(now)
 
-      return formatted;
-    } catch (err) {
-      return 'ERROR_TIMEZONE';
-    }
-  }
+			return formatted
+		} catch (err) {
+			return 'ERROR_TIMEZONE'
+		}
+	}
 
-  private isTime(param: string): boolean {
-    return param.length === 5 && param[2] === ':';
-  }
+	private isTime(param: string): boolean {
+		return param.length === 5 && param[2] === ':'
+	}
 
-  private isCommandByParams(params: string[], saveCities: string[]) {
-    const isAllCitiesNow = (params.length === 0 && saveCities.length) || params.length
-    const isWillTime = params.length >= 2 && this.isTime(params[0]);
+	private isCommandByParams(params: string[], saveCities: string[]) {
+		const isAllCitiesNow = (params.length === 0 && saveCities.length) || params.length
+		const isWillTime = params.length >= 2 && this.isTime(params[0])
 
-    return {
-      isAllCitiesNow,
-      isWillTime,
-    };
-  }
+		return {
+			isAllCitiesNow,
+			isWillTime
+		}
+	}
 }
 
 // time now

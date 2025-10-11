@@ -1,7 +1,7 @@
-import { AbstractCommand } from "./abstract.command";
-import { Context, CommandContext } from "grammy";
+import { ContextBotType } from "../types";
+import { AbstractCommand, ICommand } from "./abstract.command";
 
-export class StartCommand extends AbstractCommand {
+export class StartCommand extends AbstractCommand implements ICommand {
     public commandName = "start"
     public commandDescription = "Бот для удобной работы с часовыми поясами love from going йоу"
 
@@ -9,7 +9,7 @@ export class StartCommand extends AbstractCommand {
 
     private message = 'Бот для удобной работы с часовыми поясами love from going йоу'
 
-    async execute(ctx: CommandContext<Context>): Promise<void> {
+    async execute(ctx: ContextBotType): Promise<void> {
         await ctx.reply(this.message)
     }
  }
