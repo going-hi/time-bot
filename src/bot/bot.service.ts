@@ -187,7 +187,7 @@ export class BotService {
 	}
 
 	// НУЖНО добавить изображение
-	@Cron(CronExpression.EVERY_MINUTE)
+	// @Cron(CronExpression.EVERY_MINUTE)
 	async handleCron() {
 		console.log('HUIII')
 		const time = this.getTime()

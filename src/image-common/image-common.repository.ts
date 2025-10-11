@@ -23,7 +23,7 @@ export class ImageCommonRepository {
 		const key = this.getKeyUsersList()
 		const list = await this.cacheSqliteService.get(key)
 
-		if (!list) {
+		if (!list || !list.length) {
 			return []
 		}
 
@@ -40,7 +40,7 @@ export class ImageCommonRepository {
 		const key = this.getKeyImageList()
 		const list = await this.cacheSqliteService.get(key)
 
-		if (!list) {
+		if (!list || !list.length) {
 			return []
 		}
 
