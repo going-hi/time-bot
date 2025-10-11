@@ -9,6 +9,7 @@ import { CitiesModule } from './cities/cities.module'
 import { ImageHistoryModule } from './image-histories'
 import { ImageTimeUsersModule } from './image-time-users'
 import { ScheduleModule } from '@nestjs/schedule'
+import { ImageCommonModule } from './image-common'
 
 @Module({
 	imports: [
@@ -20,7 +21,8 @@ import { ScheduleModule } from '@nestjs/schedule'
 		CacheSqliteModule,
 		CitiesModule,
 		ImageHistoryModule,
-		ImageTimeUsersModule
+		ImageTimeUsersModule,
+		ImageCommonModule
 	]
 })
 export class AppModule {}
