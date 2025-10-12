@@ -39,13 +39,11 @@ jobs:
         with:  # ← исправлено с witch на with
           to: ${{ env.TELEGRAM_TO }}
           token: ${{ secrets.BOT_TOKEN }}
-          message: |
-            ${{ 
-              github.event.inputs.action == 'stop' && '🛑 Останавливаю' :
-              github.event.inputs.action == 'start' && '🚀 Запускаю' :
-              github.event.inputs.action == 'restart' && '🔄 Перезапускаю' :
-              '📊 Проверяю'
-            }} контейнер
+          message: | 
+            ${{ github.event.inputs.action == 'stop' && '🛑 Останавливаю контейнер' || '' }}
+            ${{ github.event.inputs.action == 'start' && '🚀 Запускаю контейнер' || '' }}
+            ${{ github.event.inputs.action == 'restart' && '🔄 Перезапускаю контейнер' || '' }}
+            ${{ github.event.inputs.action == 'ps' && '📊 Проверяю контейнер' || '' }}
             📦 Container: ${{ github.event.inputs.container_name }}
             ${{ github.event.inputs.pull_latest && '📥 Pull latest image: YES' || '' }}
             👤 User: ${{ github.actor }}
