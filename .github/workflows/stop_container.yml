@@ -16,7 +16,7 @@ on:
       container_name:
         description: 'Имя контейнера'
         required: true
-        default: 'time-bot'
+        default: 'bot-ebal-nahui'
         type: string
       pull_latest:
         description: 'Pull latest image before start'
