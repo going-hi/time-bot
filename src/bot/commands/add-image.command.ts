@@ -36,7 +36,7 @@ export class AddImageCommand extends AbstractCommand {
 		images.push(file_id)
 
 
-
+		console.log("saves: ", images)
 		await this.imageCommonRepository.saveImages(images)
 		await ctx.reply('Вы успешно сохранили фотографию!')
 	}
