@@ -3,7 +3,7 @@ name: Container Health Check
 on:
   schedule:
     - cron: '*/5 * * * *'  # Каждые 5 минут
-  workflow_dispatch:        # Ручной запуск
+  workflow_dispatch:
 
 env:
   TELEGRAM_TO: -1003170352623
@@ -13,55 +13,51 @@ jobs:
   check-container:
     runs-on: ubuntu-latest
     steps:
-      # Шаг 1: Проверка контейнера через SSH
       - name: Check container status
         id: container-check
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
-          password: ${{ secrets.SSH_PRIVATE_KEY }}
+          password: ${{ secrets.SSH_PRIVATE_KEY }}  # ✅ безопаснее, чем password
           timeout: 30s
+          script_stop: true
           script: |
             CONTAINER="${{ env.CONTAINER_NAME }}"
             echo "🔍 Checking container: $CONTAINER"
-            
-            # Проверяем существование контейнера
+
             if ! docker inspect "$CONTAINER" >/dev/null 2>&1; then
-              echo "❌ Container not found"
-              echo "status=not_found" >> $GITHUB_OUTPUT
-              echo "details=Container $CONTAINER does not exist" >> $GITHUB_OUTPUT
+              echo "not_found|❌ Container $CONTAINER does not exist"
               exit 0
             fi
-            
-            # Получаем статус контейнера
+
             STATUS=$(docker inspect --format='{{.State.Status}}' "$CONTAINER")
-            
+
             if [ "$STATUS" = "running" ]; then
               STARTED_AT=$(docker inspect --format='{{.State.StartedAt}}' "$CONTAINER")
-              UPTIME=$(docker inspect --format='{{.State.Status}} since {{.State.StartedAt}}' "$CONTAINER")
               RESTART_COUNT=$(docker inspect --format='{{.RestartCount}}' "$CONTAINER")
-              
-              echo "✅ Container is running"
-              echo "status=running" >> $GITHUB_OUTPUT
-              echo "details=🟢 Running | Restarts: $RESTART_COUNT | Started: $STARTED_AT" >> $GITHUB_OUTPUT
+              echo "running|🟢 Running | Restarts: $RESTART_COUNT | Started: $STARTED_AT"
             else
               EXIT_CODE=$(docker inspect --format='{{.State.ExitCode}}' "$CONTAINER")
-              echo "❌ Container is stopped"
-              echo "status=stopped" >> $GITHUB_OUTPUT
-              echo "details=🔴 Stopped | Exit Code: $EXIT_CODE" >> $GITHUB_OUTPUT
+              echo "stopped|🔴 Stopped | Exit Code: $EXIT_CODE"
             fi
-            
-            # Дополнительная информация
-            echo "--- System Info ---"
-            docker system df
-            echo ""
-            echo "--- Running Containers ---"
-            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.RunningFor}}"
 
-      - name: Get current time
+      - name: Parse SSH output
+        id: parse
+        run: |
+          output="${{ steps.container-check.outputs.output }}"
+          status=$(echo "$output" | head -n1 | cut -d'|' -f1)
+          details=$(echo "$output" | head -n1 | cut -d'|' -f2-)
+          echo "status=$status" >> $GITHUB_OUTPUT
+          echo "details=$details" >> $GITHUB_OUTPUT
+
+      - name: Get current time (Moscow)
         id: time
-        run: echo "time=$(date -Iseconds)" >> $GITHUB_OUTPUT
+        run: |
+          # Устанавливаем временную зону МСК (UTC+3)
+          export TZ="Europe/Moscow"
+          now=$(date +"%d %B %Y, %H:%M (%Z)")
+          echo "time=$now" >> $GITHUB_OUTPUT
 
       - name: Send Telegram report
         uses: appleboy/telegram-action@master
@@ -70,9 +66,9 @@ jobs:
           token: ${{ secrets.BOT_TOKEN }}
           message: |
             📊 ОТЧЕТ О КОНТЕЙНЕРЕ
-            
+
             🐳 Имя: ${{ env.CONTAINER_NAME }}
-            🚀 Статус: ${{ steps.container-check.outputs.status }}
-            📝 Детали: ${{ steps.container-check.outputs.details }}
-            
+            🚀 Статус: ${{ steps.parse.outputs.status }}
+            📝 Детали: ${{ steps.parse.outputs.details }}
+
             🕒 Время: ${{ steps.time.outputs.time }}
