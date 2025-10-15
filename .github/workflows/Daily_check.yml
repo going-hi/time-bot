@@ -2,7 +2,7 @@ name: Container Health Check
 
 on:
   schedule:
-    - cron: '*/5 * * * *'  # Каждые 5 минут
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 env:
@@ -12,22 +12,23 @@ env:
 jobs:
   check-container:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Check container status
-        id: container-check
+      - name: Check container status on remote server
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
-          password: ${{ secrets.SSH_PRIVATE_KEY }}  # ✅ безопаснее, чем password
+          password: ${{ secrets.SSH_PRIVATE_KEY }}
           timeout: 30s
           script_stop: true
           script: |
             CONTAINER="${{ env.CONTAINER_NAME }}"
+            OUTPUT_FILE="/tmp/container_status.txt"
             echo "🔍 Checking container: $CONTAINER"
 
             if ! docker inspect "$CONTAINER" >/dev/null 2>&1; then
-              echo "not_found|❌ Container $CONTAINER does not exist"
+              echo "not_found|❌ Container $CONTAINER does not exist" > $OUTPUT_FILE
               exit 0
             fi
 
@@ -36,25 +37,34 @@ jobs:
             if [ "$STATUS" = "running" ]; then
               STARTED_AT=$(docker inspect --format='{{.State.StartedAt}}' "$CONTAINER")
               RESTART_COUNT=$(docker inspect --format='{{.RestartCount}}' "$CONTAINER")
-              echo "running|🟢 Running | Restarts: $RESTART_COUNT | Started: $STARTED_AT"
+              echo "running|🟢 Running | Restarts: $RESTART_COUNT | Started: $STARTED_AT" > $OUTPUT_FILE
             else
               EXIT_CODE=$(docker inspect --format='{{.State.ExitCode}}' "$CONTAINER")
-              echo "stopped|🔴 Stopped | Exit Code: $EXIT_CODE"
+              echo "stopped|🔴 Stopped | Exit Code: $EXIT_CODE" > $OUTPUT_FILE
             fi
 
-      - name: Parse SSH output
+      - name: Download container status result
+        id: fetch
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "/tmp/container_status.txt"
+          target: "./"
+
+      - name: Parse container status
         id: parse
         run: |
-          output="${{ steps.container-check.outputs.output }}"
-          status=$(echo "$output" | head -n1 | cut -d'|' -f1)
-          details=$(echo "$output" | head -n1 | cut -d'|' -f2-)
+          line=$(cat container_status.txt)
+          status=$(echo "$line" | cut -d'|' -f1)
+          details=$(echo "$line" | cut -d'|' -f2-)
           echo "status=$status" >> $GITHUB_OUTPUT
           echo "details=$details" >> $GITHUB_OUTPUT
 
       - name: Get current time (Moscow)
         id: time
         run: |
-          # Устанавливаем временную зону МСК (UTC+3)
           export TZ="Europe/Moscow"
           now=$(date +"%d %B %Y, %H:%M (%Z)")
           echo "time=$now" >> $GITHUB_OUTPUT
