@@ -59,20 +59,20 @@ jobs:
             echo "--- Running Containers ---"
             docker ps --format "table {{.Names}}\t{{.Status}}\t{{.RunningFor}}"
 
-          # Уведомление об успешном завершении
+      - name: Get current time
+        id: time
+        run: echo "time=$(date -Iseconds)" >> $GITHUB_OUTPUT
+
       - name: Send Telegram report
-        if: always()
         uses: appleboy/telegram-action@master
         with:
           to: ${{ env.TELEGRAM_TO }}
           token: ${{ secrets.BOT_TOKEN }}
           message: |
-            ОТЧЕТ О КОНТЕЙНЕРЕ
-      
-            Контейнер: ${{ env.CONTAINER_NAME }}
-            Статус: ${{ steps.container-check.outputs.status }}
-            Детали: ${{ steps.container-check.outputs.details }}
-      
-            Время: ${{ fromJSON('{"date": "'$(date +"%H:%M:%S")'"}').date }}
-            Тип: ${{ github.event_name }}
-
+            📊 ОТЧЕТ О КОНТЕЙНЕРЕ
+            
+            🐳 Имя: ${{ env.CONTAINER_NAME }}
+            🚀 Статус: ${{ steps.container-check.outputs.status }}
+            📝 Детали: ${{ steps.container-check.outputs.details }}
+            
+            🕒 Время: ${{ steps.time.outputs.time }}
