@@ -51,29 +51,18 @@ jobs:
           docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
           # Уведомление об успешном завершении
-      - name: Notify deploy success
-        if: success()
+      - name: Send Telegram report
+        if: always()
         uses: appleboy/telegram-action@master
         with:
           to: ${{ env.TELEGRAM_TO }}
           token: ${{ secrets.BOT_TOKEN }}
           message: |
-            ✅ Деплой прошел заебись!
-            📦 Repository: ${{ github.repository }}
-            🐳 Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-            🏷️ Tags: ${{ github.sha }}, latest
-            ⏱️ Duration: ${{ job.status }} 
-            🔗 Registry: ${{ env.REGISTRY }}
-
-      # Уведомление о неудачном деплое
-      - name: Notify deploy failure
-        if: failure()
-        uses: appleboy/telegram-action@master
-        with:
-          to: ${{ env.TELEGRAM_TO }}
-          token: ${{ secrets.BOT_TOKEN }}
-          message: |
-            ❌ Деплой не сработал(
-            📦 Repository: ${{ github.repository }}
-            🐳 Image: ${{ env.IMAGE_NAME }}
-            ⚠️ Check workflow for details: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            ОТЧЕТ О КОНТЕЙНЕРЕ
+      
+            Контейнер: ${{ env.CONTAINER_NAME }}
+            Статус: ${{ steps.container-check.outputs.status }}
+            Детали: ${{ steps.container-check.outputs.details }}
+      
+            Время: ${{ fromJSON('{"date": "'$(date +"%H:%M:%S")'"}').date }}
+            Тип: ${{ github.event_name }}
