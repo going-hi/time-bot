@@ -17,12 +17,14 @@ jobs:
       # 1️⃣ Проверяем контейнер
       - name: Check container status on remote server
         uses: appleboy/ssh-action@v1.0.3
+        id: check
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SSH_PRIVATE_KEY }}
           timeout: 30s
           script_stop: true
+          proxy-output: true
           script: |
             CONTAINER="${{ env.CONTAINER_NAME }}"
             OUTPUT_FILE="/tmp/container_status.txt"
@@ -30,6 +32,7 @@ jobs:
 
             if ! docker inspect "$CONTAINER" >/dev/null 2>&1; then
               echo "not_found|❌ Container $CONTAINER does not exist" > $OUTPUT_FILE
+              cat $OUTPUT_FILE
               exit 0
             fi
 
@@ -46,27 +49,18 @@ jobs:
 
             cat $OUTPUT_FILE
 
-      # 2️⃣ Забираем результат через stdout
-      - name: Get container status
-        id: result
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          password: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: cat /tmp/container_status.txt
-
-      # 3️⃣ Разбираем результат
+      # 2️⃣ Разбираем результат
       - name: Parse container status
         id: parse
         run: |
-          line="${{ steps.result.outputs.stdout }}"
+          line="${{ steps.check.outputs.stdout }}"
+          echo "Raw line: $line"
           status=$(echo "$line" | cut -d'|' -f1)
           details=$(echo "$line" | cut -d'|' -f2-)
           echo "status=$status" >> $GITHUB_OUTPUT
           echo "details=$details" >> $GITHUB_OUTPUT
 
-      # 4️⃣ Время в Москве
+      # 3️⃣ Получаем текущее время (МСК)
       - name: Get current time (Moscow)
         id: time
         run: |
@@ -74,7 +68,7 @@ jobs:
           now=$(date +"%d %B %Y, %H:%M (%Z)")
           echo "time=$now" >> $GITHUB_OUTPUT
 
-      # 5️⃣ Отправляем в Telegram
+      # 4️⃣ Отправляем отчет в Telegram
       - name: Send Telegram report
         uses: appleboy/telegram-action@master
         with:
