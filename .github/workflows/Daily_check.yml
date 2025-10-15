@@ -24,7 +24,7 @@ jobs:
           script_stop: true
           script: |
             CONTAINER="${{ env.CONTAINER_NAME }}"
-            OUTPUT_FILE="/tmp/container_status.txt"
+            OUTPUT_FILE="/home/${USER}/container_status.txt"
             echo "🔍 Checking container: $CONTAINER"
 
             if ! docker inspect "$CONTAINER" >/dev/null 2>&1; then
@@ -51,9 +51,8 @@ jobs:
           password: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             echo "Checking file existence..."
-            ls -l /home/***/container_status.txt || echo "❌ File not found!"
+            ls -l /home/${USER}/container_status.txt || echo "❌ File not found!"
 
-      
       - name: Download container status result
         id: fetch
         uses: appleboy/scp-action@v0.1.7
@@ -61,7 +60,7 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "/home/***/container_status.txt"   # 👈 ВАЖНО: абсолютный путь
+          source: "/home/${{ secrets.SERVER_USER }}/container_status.txt"
           target: "./"
 
       - name: Parse container status
