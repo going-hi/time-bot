@@ -14,6 +14,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1️⃣ Проверяем контейнер
       - name: Check container status on remote server
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -43,35 +44,29 @@ jobs:
               echo "stopped|🔴 Stopped | Exit Code: $EXIT_CODE" > $OUTPUT_FILE
             fi
 
-      - name: Debug check file on remote
+            cat $OUTPUT_FILE
+
+      # 2️⃣ Забираем результат через stdout
+      - name: Get container status
+        id: result
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            echo "Checking file existence..."
-            ls -l /home/${USER}/container_status.txt || echo "❌ File not found!"
+          script: cat /tmp/container_status.txt
 
-      - name: Download container status result
-        id: fetch
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          password: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "/home/${{ secrets.SERVER_USER }}/container_status.txt"
-          target: "./"
-
+      # 3️⃣ Разбираем результат
       - name: Parse container status
         id: parse
         run: |
-          line=$(cat container_status.txt)
+          line="${{ steps.result.outputs.stdout }}"
           status=$(echo "$line" | cut -d'|' -f1)
           details=$(echo "$line" | cut -d'|' -f2-)
           echo "status=$status" >> $GITHUB_OUTPUT
           echo "details=$details" >> $GITHUB_OUTPUT
 
+      # 4️⃣ Время в Москве
       - name: Get current time (Moscow)
         id: time
         run: |
@@ -79,16 +74,19 @@ jobs:
           now=$(date +"%d %B %Y, %H:%M (%Z)")
           echo "time=$now" >> $GITHUB_OUTPUT
 
+      # 5️⃣ Отправляем в Telegram
       - name: Send Telegram report
         uses: appleboy/telegram-action@master
         with:
           to: ${{ env.TELEGRAM_TO }}
           token: ${{ secrets.BOT_TOKEN }}
+          format: markdown
           message: |
-            📊 ОТЧЕТ О КОНТЕЙНЕРЕ
+            📊 *ОТЧЁТ О КОНТЕЙНЕРЕ*
 
-            🐳 Имя: ${{ env.CONTAINER_NAME }}
-            🚀 Статус: ${{ steps.parse.outputs.status }}
-            📝 Детали: ${{ steps.parse.outputs.details }}
+            🐳 *Имя:* `${{ env.CONTAINER_NAME }}`
+            🚀 *Статус:* ${{ steps.parse.outputs.status }}
+            📝 *Детали:* ${{ steps.parse.outputs.details }}
 
-            🕒 Время: ${{ steps.time.outputs.time }}
+            🕒 *Время:* ${{ steps.time.outputs.time }}
+            🔗 [Просмотр лога](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
