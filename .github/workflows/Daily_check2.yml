@@ -2,7 +2,7 @@ name: Daily Container Check
 
 on:
   schedule:
-    - cron: '2 * * * *'
+    - cron: '*/2 * * * *'  # Каждые 2 минуты
   workflow_dispatch:
 
 env:
@@ -13,12 +13,47 @@ jobs:
   container-health-check:
     runs-on: ubuntu-latest
     steps:
+      # Диагностический шаг
+      - name: Debug info
+        run: |
+          echo "🚀 Workflow запущен!"
+          echo "Event: ${{ github.event_name }}"
+          echo "Time: $(date)"
+          
       - name: Check container via SSH
         id: container-check
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
-          password: ${{ secrets.SSH_PRIVATE_KEY }} 
-          script: 
-            echo "✅ SSH connection successful!"
+          password: ${{ secrets.SSH_PRIVATE_KEY }}
+          timeout: 30s
+          script: |
+            echo "✅ SSH подключение установлено к $(hostname)"
+            CONTAINER="${{ env.CONTAINER_NAME }}"
+            echo "🔍 Проверяю контейнер: $CONTAINER"
+            
+            # Упрощенная проверка для теста
+            if docker ps | grep -q "$CONTAINER"; then
+              echo "status=running" >> $GITHUB_OUTPUT
+              echo "details=✅ Контейнер запущен" >> $GITHUB_OUTPUT
+            else
+              echo "status=stopped" >> $GITHUB_OUTPUT
+              echo "details=❌ Контейнер остановлен" >> $GITHUB_OUTPUT
+            fi
+
+      - name: Send Telegram report
+        if: always()  # Отправлять даже при ошибке
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ env.TELEGRAM_TO }}
+          token: ${{ secrets.BOT_TOKEN }}
+          message: |
+            📊 ОТЧЕТ ПРОВЕРКИ
+            
+            Контейнер: ${{ env.CONTAINER_NAME }}
+            Статус: ${{ steps.container-check.outputs.status || 'unknown' }}
+            Детали: ${{ steps.container-check.outputs.details || 'Ошибка проверки' }}
+            
+            Время: ${{ fromJSON('{"date": "'$(date +"%H:%M:%S")'"}').date }}
+            Тип: ${{ github.event_name == 'schedule' && 'Авто' : 'Ручной' }}
