@@ -25,22 +25,61 @@ jobs:
             echo "🔍 Проверяю состояние контейнера: $CONTAINER"
 
             # Проверяем, запущен ли контейнер
-            if docker ps --format "table {{.Names}}\t{{.Status}}" | grep -q "$CONTAINER"; then
-              STATUS=$(docker ps --format "table {{.Names}}\t{{.Status}}" | grep "$CONTAINER" | awk '{print $2}')
-              UPTIME=$(docker ps --format "table {{.Names}}\t{{.RunningFor}}" | grep "$CONTAINER" | awk '{print $2}')
-              echo "✅ Контейнер запущен"
-              echo "status=running" >> $GITHUB_OUTPUT
-              echo "details=Status: $STATUS, Uptime: $UPTIME" >> $GITHUB_OUTPUT
-            elif docker ps -a --format "table {{.Names}}\t{{.Status}}" | grep -q "$CONTAINER"; then
-              STATUS=$(docker ps -a --format "table {{.Names}}\t{{.Status}}" | grep "$CONTAINER" | awk '{print $2}')
-              echo "❌ Контейнер остановлен"
-              echo "status=stopped" >> $GITHUB_OUTPUT
-              echo "details=Status: $STATUS" >> $GITHUB_OUTPUT
-            else
-              echo "⚠️ Контейнер не найден"
+            # Проверяем существование контейнера
+            if ! docker inspect "$CONTAINER" >/dev/null 2>&1; then
+              echo "❌ Container not found"
               echo "status=not_found" >> $GITHUB_OUTPUT
-              echo "details=Контейнер $CONTAINER не существует" >> $GITHUB_OUTPUT
+              echo "details=Container $CONTAINER does not exist" >> $GITHUB_OUTPUT
+              exit 0
             fi
+            
+            # Получаем статус контейнера
+            STATUS=$(docker inspect --format='{{.State.Status}}' "$CONTAINER")
+            
+            if [ "$STATUS" = "running" ]; then
+              STARTED_AT=$(docker inspect --format='{{.State.StartedAt}}' "$CONTAINER")
+              UPTIME=$(docker inspect --format='{{.State.Status}} since {{.State.StartedAt}}' "$CONTAINER")
+              RESTART_COUNT=$(docker inspect --format='{{.RestartCount}}' "$CONTAINER")
+              
+              echo "✅ Container is running"
+              echo "status=running" >> $GITHUB_OUTPUT
+              echo "details=🟢 Running | Restarts: $RESTART_COUNT | Started: $STARTED_AT" >> $GITHUB_OUTPUT
+            else
+              EXIT_CODE=$(docker inspect --format='{{.State.ExitCode}}' "$CONTAINER")
+              echo "❌ Container is stopped"
+              echo "status=stopped" >> $GITHUB_OUTPUT
+              echo "details=🔴 Stopped | Exit Code: $EXIT_CODE" >> $GITHUB_OUTPUT
+            fi
+            
+            # Дополнительная информация
+            echo "--- System Info ---"
+            docker system df
+            echo ""
+            echo "--- Running Containers ---"
+            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.RunningFor}}"
+
+      # Шаг 2: Отправка отчета в Telegram
+      - name: Send Telegram notification
+        if: always()  # Отправлять даже при ошибках
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ env.TELEGRAM_TO }}
+          token: ${{ secrets.BOT_TOKEN }}
+          message: |
+            ${{ 
+              steps.container-check.outputs.status == 'running' && '✅ СИСТЕМА В НОРМЕ' :
+              steps.container-check.outputs.status == 'stopped' && '❌ ПРОБЛЕМА С КОНТЕЙНЕРОМ' :
+              '⚠️ КОНТЕЙНЕР НЕ НАЙДЕН'
+            }}
+            
+            🐳 Контейнер: ${{ env.CONTAINER_NAME }}
+            📊 Статус: ${{ steps.container-check.outputs.status }}
+            ℹ️ Детали: ${{ steps.container-check.outputs.details }}
+            
+            🕒 Время проверки: ${{ fromJSON('{"date": "'$(date -Iseconds)'"}').date }}
+            🔧 Тип запуска: ${{ github.event_name == 'schedule' && 'Автоматически' : 'Вручную' }}
+            
+            ${{ steps.container-check.outputs.status != 'running' && '🚨 ТРЕБУЕТСЯ ВМЕШАТЕЛЬСТВО!' : '🎉 Все системы работают нормально!' }}
             
             # Дополнительная информация о системе
             echo "---"
