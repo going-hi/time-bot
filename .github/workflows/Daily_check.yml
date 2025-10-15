@@ -1,0 +1,65 @@
+name: Daily Container Check
+
+on:
+  schedule:
+    # Каждый день в 17:00 UTC (20:00 МСК)
+    - cron: '0 17 * * *'
+  workflow_dispatch:  # Ручной запуск
+
+env:
+  TELEGRAM_TO: -1003170352623
+  CONTAINER_NAME: "bot-ebal-nahui"
+
+jobs:
+  container-health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check container via SSH
+        id: container check
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            CONTAINER="${{ env.CONTAINER_NAME }}"
+            echo "🔍 Проверяю состояние контейнера: $CONTAINER"
+
+            # Проверяем, запущен ли контейнер
+            if docker ps --format "table {{.Names}}\t{{.Status}}" | grep -q "$CONTAINER"; then
+              STATUS=$(docker ps --format "table {{.Names}}\t{{.Status}}" | grep "$CONTAINER" | awk '{print $2}')
+              UPTIME=$(docker ps --format "table {{.Names}}\t{{.RunningFor}}" | grep "$CONTAINER" | awk '{print $2}')
+              echo "✅ Контейнер запущен"
+              echo "status=running" >> $GITHUB_OUTPUT
+              echo "details=Status: $STATUS, Uptime: $UPTIME" >> $GITHUB_OUTPUT
+             elif docker ps -a --format "table {{.Names}}\t{{.Status}}" | grep -q "$CONTAINER"; then
+              STATUS=$(docker ps -a --format "table {{.Names}}\t{{.Status}}" | grep "$CONTAINER" | awk '{print $2}')
+              echo "❌ Контейнер остановлен"
+              echo "status=stopped" >> $GITHUB_OUTPUT
+              echo "details=Status: $STATUS" >> $GITHUB_OUTPUT
+            else
+              echo "⚠️ Контейнер не найден"
+              echo "status=not_found" >> $GITHUB_OUTPUT
+              echo "details=Контейнер $CONTAINER не существует" >> $GITHUB_OUTPUT
+            fi
+            
+            # Дополнительная информация о системе
+            echo "---"
+            echo "📊 Общая статистика:"
+            docker system df
+            echo ""
+            echo "🖥️ Использование ресурсов:"
+            docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}" | head -5
+
+# Отправка отчета в Telegram
+      - name: Send Telegram report
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ env.TELEGRAM_TO }}
+          token: ${{ secrets.BOT_TOKEN }}
+          message: |
+            ${{ 
+              steps.container-check.outputs.status == 'running' && '✅ ДНЕВНОЙ ОТЧЕТ' :
+              steps.container-check.outputs.status == 'stopped' && '❌ ДНЕВНОЙ ОТЧЕТ' :
+              '⚠️ ДНЕВНОЙ ОТЧЕТ'
+            }}
