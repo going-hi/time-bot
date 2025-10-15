@@ -37,4 +37,4 @@ jobs:
             Статус: ${{ steps.container-check.outputs.status }}
             Детали: ${{ steps.container-check.outputs.details }}
             
-            Время: ${{ fromJSON('{"date": "'$(date +"%H:%M:%S")'"}').date }}
+           
