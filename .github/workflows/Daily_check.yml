@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check container via SSH
-        id: container check
+        id: container-check  # ← исправлено: убрал пробел
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -32,7 +32,7 @@ jobs:
               echo "✅ Контейнер запущен"
               echo "status=running" >> $GITHUB_OUTPUT
               echo "details=Status: $STATUS, Uptime: $UPTIME" >> $GITHUB_OUTPUT
-             elif docker ps -a --format "table {{.Names}}\t{{.Status}}" | grep -q "$CONTAINER"; then
+            elif docker ps -a --format "table {{.Names}}\t{{.Status}}" | grep -q "$CONTAINER"; then  # ← исправлено: добавил пробел после elif
               STATUS=$(docker ps -a --format "table {{.Names}}\t{{.Status}}" | grep "$CONTAINER" | awk '{print $2}')
               echo "❌ Контейнер остановлен"
               echo "status=stopped" >> $GITHUB_OUTPUT
@@ -51,7 +51,7 @@ jobs:
             echo "🖥️ Использование ресурсов:"
             docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}" | head -5
 
-# Отправка отчета в Telegram
+      # Отправка отчета в Telegram  # ← исправлено: правильный отступ
       - name: Send Telegram report
         uses: appleboy/telegram-action@master
         with:
