@@ -2,7 +2,7 @@ name: Daily Container Check
 
 on:
   schedule:
-    - cron: '0 17 * * *'
+    - cron: '* * * * *'
   workflow_dispatch:
 
 env:
