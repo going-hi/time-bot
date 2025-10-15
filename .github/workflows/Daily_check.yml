@@ -50,7 +50,7 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "/tmp/container_status.txt"
+          source: "/home/***/container_status.txt"   # 👈 ВАЖНО: абсолютный путь
           target: "./"
 
       - name: Parse container status
