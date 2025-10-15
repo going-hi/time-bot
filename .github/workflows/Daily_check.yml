@@ -63,3 +63,12 @@ jobs:
               steps.container-check.outputs.status == 'stopped' && '❌ ДНЕВНОЙ ОТЧЕТ' :
               '⚠️ ДНЕВНОЙ ОТЧЕТ'
             }}
+
+            📊 Состояние контейнера: ${{ env.CONTAINER_NAME }}
+            🚀 Статус: ${{ steps.container-check.outputs.status == 'running' && 'ЗАПУЩЕН' : steps.container-check.outputs.status == 'stopped' && 'ОСТАНОВЛЕН' : 'НЕ НАЙДЕН' }}
+            📝 Детали: ${{ steps.container-check.outputs.details }}
+            
+            🕒 Время проверки: ${{ fromJSON('{"date": "'$(date -Iseconds)'"}').date }}
+            🔧 Запущено: ${{ github.event_name == 'schedule' && 'по расписанию' : 'вручную' }}
+            
+            ${{ steps.container-check.outputs.status != 'running' && '🚨 ТРЕБУЕТСЯ ВМЕШАТЕЛЬСТВО!' : '🎉 Все системы работают нормально!' }}
