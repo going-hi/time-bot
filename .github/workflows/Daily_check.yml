@@ -22,7 +22,7 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SSH_PRIVATE_KEY }}
-          script_stop: true
+          script_stop: false
           script: |
             CONTAINER="${{ env.CONTAINER_NAME }}"
             echo "🔍 Checking container: $CONTAINER"
