@@ -24,7 +24,6 @@ jobs:
           password: ${{ secrets.SSH_PRIVATE_KEY }}
           timeout: 30s
           script_stop: true
-          proxy-output: true
           script: |
             CONTAINER="${{ env.CONTAINER_NAME }}"
             OUTPUT_FILE="/tmp/container_status.txt"
