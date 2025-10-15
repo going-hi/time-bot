@@ -20,7 +20,7 @@ jobs:
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          password: ${{ secrets.SSH_PRIVATE_KEY }}
           timeout: 30s
           script: |
             CONTAINER="${{ env.CONTAINER_NAME }}"
@@ -58,3 +58,25 @@ jobs:
             echo ""
             echo "--- Running Containers ---"
             docker ps --format "table {{.Names}}\t{{.Status}}\t{{.RunningFor}}"
+
+      - name: Send Telegram report
+        if: always()  # Отправлять даже при ошибках
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ env.TELEGRAM_TO }}
+          token: ${{ secrets.BOT_TOKEN }}
+          message: |
+            ${{ 
+              steps.container-check.outputs.status == 'running' && '✅ СТАТУС КОНТЕЙНЕРА' :
+              steps.container-check.outputs.status == 'stopped' && '❌ СТАТУС КОНТЕЙНЕРА' :
+              '⚠️ СТАТУС КОНТЕЙНЕРА'
+            }}
+            
+            🐳 Имя: ${{ env.CONTAINER_NAME }}
+            🚀 Статус: ${{ steps.container-check.outputs.status }}
+            📝 Детали: ${{ steps.container-check.outputs.details }}
+            
+            🕒 Время проверки: ${{ fromJSON('{"date": "'$(date -Iseconds)'"}').date }}
+            🔧 Запуск: ${{ github.event_name == 'schedule' && 'По расписанию' : 'Вручную' }}
+            
+            ${{ steps.container-check.outputs.status != 'running' && '🚨 ВНИМАНИЕ: Требуется вмешательство!' : '🎉 Все системы работают нормально!' }}
