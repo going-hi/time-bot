@@ -16,43 +16,43 @@ jobs:
     steps:
       # 1️⃣ Проверяем контейнер
       - name: Check container status on remote server
-        uses: appleboy/ssh-action@v1.0.3
         id: check
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SSH_PRIVATE_KEY }}
-          timeout: 30s
           script_stop: true
           script: |
             CONTAINER="${{ env.CONTAINER_NAME }}"
-            OUTPUT_FILE="/tmp/container_status.txt"
             echo "🔍 Checking container: $CONTAINER"
 
             if ! docker inspect "$CONTAINER" >/dev/null 2>&1; then
-              echo "not_found|❌ Container $CONTAINER does not exist" > $OUTPUT_FILE
-              cat $OUTPUT_FILE
-              exit 0
-            fi
-
-            STATUS=$(docker inspect --format='{{.State.Status}}' "$CONTAINER")
-
-            if [ "$STATUS" = "running" ]; then
-              STARTED_AT=$(docker inspect --format='{{.State.StartedAt}}' "$CONTAINER")
-              RESTART_COUNT=$(docker inspect --format='{{.RestartCount}}' "$CONTAINER")
-              echo "running|🟢 Running | Restarts: $RESTART_COUNT | Started: $STARTED_AT" > $OUTPUT_FILE
+              RESULT="not_found|❌ Container $CONTAINER does not exist"
             else
-              EXIT_CODE=$(docker inspect --format='{{.State.ExitCode}}' "$CONTAINER")
-              echo "stopped|🔴 Stopped | Exit Code: $EXIT_CODE" > $OUTPUT_FILE
+              STATUS=$(docker inspect --format='{{.State.Status}}' "$CONTAINER")
+              if [ "$STATUS" = "running" ]; then
+                STARTED_AT=$(docker inspect --format='{{.State.StartedAt}}' "$CONTAINER")
+                RESTART_COUNT=$(docker inspect --format='{{.RestartCount}}' "$CONTAINER")
+                RESULT="running|🟢 Running | Restarts: $RESTART_COUNT | Started: $STARTED_AT"
+              else
+                EXIT_CODE=$(docker inspect --format='{{.State.ExitCode}}' "$CONTAINER")
+                RESULT="stopped|🔴 Stopped | Exit Code: $EXIT_CODE"
+              fi
             fi
 
-            cat $OUTPUT_FILE
+            echo "$RESULT"
 
       # 2️⃣ Разбираем результат
       - name: Parse container status
         id: parse
         run: |
-          line="${{ steps.check.outputs.stdout }}"
+          # Забираем строку из логов прошлого шага
+          line=$(cat $GITHUB_STEP_SUMMARY || echo "")
+          if [ -z "$line" ]; then
+            echo "❌ Не удалось получить результат проверки контейнера"
+            exit 0
+          fi
           echo "Raw line: $line"
           status=$(echo "$line" | cut -d'|' -f1)
           details=$(echo "$line" | cut -d'|' -f2-)
