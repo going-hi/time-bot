@@ -41,15 +41,16 @@ jobs:
 
             echo "$RESULT"
 
-      # 2️⃣ Забираем результат и парсим его
+      # 2️⃣ Разбираем результат
       - name: Parse container status
         id: parse
         run: |
-          result=$(cat result.txt)
-          echo "Raw line: $result"
+          line="${{ steps.check.outputs.result }}"
+          echo "Raw line: $line"
           last_line=$(echo "$line" | grep '|' | tail -n 1)
-          status=$(echo "$result" | cut -d'|' -f1)
-          details=$(echo "$result" | cut -d'|' -f2-)
+          echo "Parsed line: $last_line"
+          status=$(echo "$line" | cut -d'|' -f1)
+          details=$(echo "$line" | cut -d'|' -f2-)
           echo "status=$status" >> $GITHUB_OUTPUT
           echo "details=$details" >> $GITHUB_OUTPUT
 
