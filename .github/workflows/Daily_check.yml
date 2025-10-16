@@ -1,9 +1,9 @@
 name: Container Health Check
 
 on:
-#  schedule:
-#    - cron: '*/5 * * * *'
   workflow_dispatch:
+  # schedule:
+  #   - cron: '*/5 * * * *'
 
 env:
   TELEGRAM_TO: -1003170352623
@@ -33,12 +33,9 @@ jobs:
             else
               STATUS=$(docker inspect --format='{{.State.Status}}' "$CONTAINER")
               if [ "$STATUS" = "running" ]; then
-                STARTED_AT=$(docker inspect --format='{{.State.StartedAt}}' "$CONTAINER")
-                RESTART_COUNT=$(docker inspect --format='{{.RestartCount}}' "$CONTAINER")
-                RESULT="running|🟢 Running | Restarts: $RESTART_COUNT | Started: $STARTED_AT"
+                RESULT="running|🟢 Container is running"
               else
-                EXIT_CODE=$(docker inspect --format='{{.State.ExitCode}}' "$CONTAINER")
-                RESULT="stopped|🔴 Stopped | Exit Code: $EXIT_CODE"
+                RESULT="stopped|🔴 Container is stopped"
               fi
             fi
 
@@ -63,19 +60,31 @@ jobs:
           now=$(date +"%d %B %Y, %H:%M (%Z)")
           echo "time=$now" >> $GITHUB_OUTPUT
 
-      # 4️⃣ Отправляем отчет в Telegram
-      - name: Send Telegram report
+      # 4️⃣ Отправляем отчет в Telegram (если работает)
+      - name: Notify if container is running
+        if: ${{ steps.parse.outputs.status == 'running' }}
         uses: appleboy/telegram-action@master
         with:
           to: ${{ env.TELEGRAM_TO }}
           token: ${{ secrets.BOT_TOKEN }}
           format: markdown
           message: |
-            📊 *ОТЧЁТ О КОНТЕЙНЕРЕ*
-
+            ✅ *Контейнер работает нормально!*
             🐳 *Имя:* `${{ env.CONTAINER_NAME }}`
-            🚀 *Статус:* ${{ steps.parse.outputs.status }}
-            📝 *Детали:* ${{ steps.parse.outputs.details }}
-
+            🟢 ${{ steps.parse.outputs.details }}
             🕒 *Время:* ${{ steps.time.outputs.time }}
-            🔗 [Просмотр лога](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+      # 5️⃣ Отправляем отчет в Telegram (если не работает)
+      - name: Notify if container is stopped or not found
+        if: ${{ steps.parse.outputs.status != 'running' }}
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ env.TELEGRAM_TO }}
+          token: ${{ secrets.BOT_TOKEN }}
+          format: markdown
+          message: |
+            ⚠️ *Контейнер не работает!*
+            🐳 *Имя:* `${{ env.CONTAINER_NAME }}`
+            🔴 ${{ steps.parse.outputs.details }}
+            🕒 *Время:* ${{ steps.time.outputs.time }}
+            🔗 [Открыть логи в GitHub Actions](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
