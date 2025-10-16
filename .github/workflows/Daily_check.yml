@@ -41,13 +41,13 @@ jobs:
               fi
             fi
 
-            echo "result=$RESULT" >> $GITHUB_OUTPUT
+            echo "$RESULT"
 
       # 2️⃣ Разбираем результат
       - name: Parse container status
         id: parse
         run: |
-          line="${{ steps.check.outputs.result }}"
+          line="${{ steps.check.outputs.stdout }}"
           echo "Raw line: $line"
           status=$(echo "$line" | cut -d'|' -f1)
           details=$(echo "$line" | cut -d'|' -f2-)
