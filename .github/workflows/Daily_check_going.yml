@@ -51,6 +51,7 @@ jobs:
         run: |
           result=$(cat result.txt)
           echo "Raw line: $result"
+          last_line=$(echo "$line" | grep '|' | tail -n 1)
           status=$(echo "$result" | cut -d'|' -f1)
           details=$(echo "$result" | cut -d'|' -f2-)
           echo "status=$status" >> $GITHUB_OUTPUT
