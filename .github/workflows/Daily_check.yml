@@ -41,18 +41,13 @@ jobs:
               fi
             fi
 
-            echo "$RESULT"
+            echo "result=$RESULT" >> $GITHUB_OUTPUT
 
       # 2️⃣ Разбираем результат
       - name: Parse container status
         id: parse
         run: |
-          # Забираем строку из логов прошлого шага
-          line=$(cat $GITHUB_STEP_SUMMARY || echo "")
-          if [ -z "$line" ]; then
-            echo "❌ Не удалось получить результат проверки контейнера"
-            exit 0
-          fi
+          line="${{ steps.check.outputs.result }}"
           echo "Raw line: $line"
           status=$(echo "$line" | cut -d'|' -f1)
           details=$(echo "$line" | cut -d'|' -f2-)
