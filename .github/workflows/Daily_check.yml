@@ -23,6 +23,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SSH_PRIVATE_KEY }}
           script_stop: false
+          register: true
           script: |
             CONTAINER="${{ env.CONTAINER_NAME }}"
             echo "🔍 Checking container: $CONTAINER"
@@ -47,7 +48,7 @@ jobs:
       - name: Parse container status
         id: parse
         run: |
-          line="${{ steps.check.outputs.stdout }}"
+          line="${{ steps.check.outputs.result }}"
           echo "Raw line: $line"
           status=$(echo "$line" | cut -d'|' -f1)
           details=$(echo "$line" | cut -d'|' -f2-)
