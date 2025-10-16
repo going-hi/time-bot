@@ -1,0 +1,82 @@
+name: Container Health Check
+
+on:
+  workflow_dispatch:
+
+env:
+  TELEGRAM_TO: -1003170352623
+  CONTAINER_NAME: "bot-ebal-nahui"
+
+jobs:
+  check-container:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ Проверяем контейнер на удалённом сервере
+      - name: Check container status on remote server
+        id: check
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SSH_PRIVATE_KEY }}
+          script_stop: false
+          script: |
+            CONTAINER="${{ env.CONTAINER_NAME }}"
+            echo "🔍 Checking container: $CONTAINER"
+
+            if ! docker inspect "$CONTAINER" >/dev/null 2>&1; then
+              RESULT="not_found|❌ Container $CONTAINER does not exist"
+            else
+              STATUS=$(docker inspect --format='{{.State.Status}}' "$CONTAINER")
+              if [ "$STATUS" = "running" ]; then
+                STARTED_AT=$(docker inspect --format='{{.State.StartedAt}}' "$CONTAINER")
+                RESTART_COUNT=$(docker inspect --format='{{.RestartCount}}' "$CONTAINER")
+                RESULT="running|🟢 Running | Restarts: $RESTART_COUNT | Started: $STARTED_AT"
+              else
+                EXIT_CODE=$(docker inspect --format='{{.State.ExitCode}}' "$CONTAINER")
+                RESULT="stopped|🔴 Stopped | Exit Code: $EXIT_CODE"
+              fi
+            fi
+
+            # 👉 сохраняем результат в файл, чтобы использовать позже
+            echo "$RESULT" > result.txt
+
+            # копируем файл обратно на хост runner'а
+            cat result.txt
+
+      # 2️⃣ Забираем результат и парсим его
+      - name: Parse container status
+        id: parse
+        run: |
+          result=$(cat result.txt)
+          echo "Raw line: $result"
+          status=$(echo "$result" | cut -d'|' -f1)
+          details=$(echo "$result" | cut -d'|' -f2-)
+          echo "status=$status" >> $GITHUB_OUTPUT
+          echo "details=$details" >> $GITHUB_OUTPUT
+
+      # 3️⃣ Получаем текущее время (МСК)
+      - name: Get current time (Moscow)
+        id: time
+        run: |
+          export TZ="Europe/Moscow"
+          now=$(date +"%d %B %Y, %H:%M (%Z)")
+          echo "time=$now" >> $GITHUB_OUTPUT
+
+      # 4️⃣ Отправляем отчёт в Telegram
+      - name: Send Telegram report
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ env.TELEGRAM_TO }}
+          token: ${{ secrets.BOT_TOKEN }}
+          format: markdown
+          message: |
+            📊 *ОТЧЁТ О КОНТЕЙНЕРЕ*
+
+            🐳 *Имя:* `${{ env.CONTAINER_NAME }}`
+            🚀 *Статус:* `${{ steps.parse.outputs.status }}`
+            📝 *Детали:* ${{ steps.parse.outputs.details }}
+
+            🕒 *Время:* ${{ steps.time.outputs.time }}
+            🔗 [Просмотр лога](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
