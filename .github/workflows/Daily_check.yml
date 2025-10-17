@@ -56,12 +56,17 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
-          script: cat /tmp/result.txt
+          script_stop: false
+          script: |
+            echo "output_start"
+            cat /tmp/result.txt
+            echo "output_end"
 
       # 3️⃣ Сохраняем результат локально
       - name: Save result to file
         run: |
-          echo "${{ steps.get_result.outputs.output }}" > result.txt
+          echo "${{ steps.get_result.outputs.output }}" | \
+            sed -n '/output_start/,/output_end/{//!p;}' > result.txt
 
       # 4️⃣ Загружаем отчёт как артефакт
       - name: Upload report as artifact
