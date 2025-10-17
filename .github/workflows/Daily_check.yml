@@ -55,8 +55,9 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: root
           password: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "/root/container_status.txt,/root/result.txt"
+          source: "'/root/container_status.txt' '/root/result.txt'"
           target: "./"
+          debug: true
 
       # 3️⃣ Загружаем отчёт как артефакт
       - name: Upload container report as artifact
