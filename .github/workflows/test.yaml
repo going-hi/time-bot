@@ -90,7 +90,12 @@ jobs:
                   status=$(echo "$line" | cut -d'|' -f1)
                   details=$(echo "$line" | cut -d'|' -f2-)
                   echo "status=$status" >> $GITHUB_OUTPUT
-                  echo "details=$details" >> $GITHUB_OUTPUT
+                  {
+                    echo "details<<EOF"
+                    echo "$details"
+                    echo "EOF"
+                  } >> $GITHUB_OUTPUT
+                  echo "Parsed: status=$status, details=$details"
 
             # 6️⃣ Текущее время
             - name: Get current time (Moscow)
@@ -111,7 +116,7 @@ jobs:
                   message: |
                       ✅ *Контейнер работает!*
                       🐳 *Имя:* `${{ env.CONTAINER_NAME }}`
-                      🟢 ${{ steps.parse.outputs.details }}
+                      🟢 *Статус:* `${{ steps.parse.outputs.details }}`
                       🕒 *Время:* ${{ steps.time.outputs.time }}
                       📄 [Отчёт в артефактах GitHub Actions](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
@@ -126,6 +131,6 @@ jobs:
                   message: |
                       ⚠️ *Контейнер не работает!*
                       🐳 *Имя:* `${{ env.CONTAINER_NAME }}`
-                      🔴 ${{ steps.parse.outputs.details }}
+                      🔴 *Статус:* `${{ steps.parse.outputs.details }}`
                       🕒 *Время:* ${{ steps.time.outputs.time }}
                       📄 [Отчёт в артефактах GitHub Actions](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
