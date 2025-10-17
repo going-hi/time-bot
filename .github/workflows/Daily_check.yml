@@ -12,19 +12,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Проверяем контейнер и сохраняем результат на удалённой машине
+      # 1️⃣ Проверяем контейнер на удалённом сервере
       - name: Check container status on remote server
         id: check
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
-          username: root
+          username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SSH_PRIVATE_KEY }}
           script_stop: false
           script: |
             CONTAINER="${{ env.CONTAINER_NAME }}"
-            REPORT="/root/container_status.txt"
-            RESULT_FILE="/root/result.txt"
+            REPORT="/tmp/container_status.txt"
+            RESULT_FILE="/tmp/result.txt"
 
             echo "🔍 Checking container: $CONTAINER" > "$REPORT"
 
@@ -36,7 +36,7 @@ jobs:
               echo "Status: $STATUS" >> "$REPORT"
               echo "Details:" >> "$REPORT"
               docker inspect "$CONTAINER" | head -n 30 >> "$REPORT"
-
+              
               if [ "$STATUS" = "running" ]; then
                 docker logs --tail 20 "$CONTAINER" >> "$REPORT" 2>&1
                 RESULT="running|🟢 Container is running"
@@ -46,39 +46,41 @@ jobs:
             fi
 
             echo "$RESULT" > "$RESULT_FILE"
-            ls -lah /root
 
-      # 2️⃣ Копируем оба файла с сервера
-      - name: Download report files from remote
-        uses: appleboy/scp-action@v0.1.7
+      # 2️⃣ Считываем результат напрямую по SSH
+      - name: Get result from server manually
+        id: get_result
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
-          username: root
+          username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "'/root/container_status.txt' '/root/result.txt'"
-          target: "./"
-          debug: true
+          port: 22
+          script: cat /tmp/result.txt
 
-      # 3️⃣ Загружаем отчёт как артефакт
-      - name: Upload container report as artifact
+      # 3️⃣ Сохраняем результат локально
+      - name: Save result to file
+        run: |
+          echo "${{ steps.get_result.outputs.output }}" > result.txt
+
+      # 4️⃣ Загружаем отчёт как артефакт
+      - name: Upload report as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: container-status-report
-          path: ./container_status.txt
-          retention-days: 7
+          name: container-status
+          path: result.txt
 
-      # 4️⃣ Разбор результата (теперь уже локального)
+      # 5️⃣ Разбираем результат
       - name: Parse container status
         id: parse
         run: |
-          line=$(cat ./result.txt || echo "unknown|no result")
-          echo "Raw result: $line"
+          line=$(cat result.txt || echo "unknown|no result")
           status=$(echo "$line" | cut -d'|' -f1)
           details=$(echo "$line" | cut -d'|' -f2-)
           echo "status=$status" >> $GITHUB_OUTPUT
           echo "details=$details" >> $GITHUB_OUTPUT
 
-      # 5️⃣ Текущее время
+      # 6️⃣ Получаем текущее время (Москва)
       - name: Get current time (Moscow)
         id: time
         run: |
@@ -86,7 +88,7 @@ jobs:
           now=$(date +"%d %B %Y, %H:%M (%Z)")
           echo "time=$now" >> $GITHUB_OUTPUT
 
-      # 6️⃣ Telegram уведомления
+      # 7️⃣ Telegram уведомления
       - name: Notify if container is running
         if: ${{ steps.parse.outputs.status == 'running' }}
         uses: appleboy/telegram-action@master
