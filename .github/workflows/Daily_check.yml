@@ -2,8 +2,6 @@ name: Container Health Check
 
 on:
   workflow_dispatch:
-  # schedule:
-  #   - cron: '*/5 * * * *'
 
 env:
   TELEGRAM_TO: -1003170352623
@@ -14,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Проверяем контейнер
+      # 1️⃣ Проверяем контейнер и сохраняем результат на удалённой машине
       - name: Check container status on remote server
         id: check
         uses: appleboy/ssh-action@v1.0.3
@@ -23,38 +21,58 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SSH_PRIVATE_KEY }}
           script_stop: false
-          register: true
           script: |
             CONTAINER="${{ env.CONTAINER_NAME }}"
-            echo "🔍 Checking container: $CONTAINER"
+            REPORT="/tmp/container_status.txt"
+            echo "🔍 Checking container: $CONTAINER" > "$REPORT"
 
             if ! docker inspect "$CONTAINER" >/dev/null 2>&1; then
+              echo "❌ Container not found" >> "$REPORT"
               RESULT="not_found|❌ Container $CONTAINER does not exist"
             else
               STATUS=$(docker inspect --format='{{.State.Status}}' "$CONTAINER")
+              echo "Status: $STATUS" >> "$REPORT"
+              echo "Details:" >> "$REPORT"
+              docker inspect "$CONTAINER" | head -n 30 >> "$REPORT"
+              
               if [ "$STATUS" = "running" ]; then
+                docker logs --tail 20 "$CONTAINER" >> "$REPORT" 2>&1
                 RESULT="running|🟢 Container is running"
               else
                 RESULT="stopped|🔴 Container is stopped"
               fi
             fi
 
-            echo "$RESULT"
+            echo "$RESULT" > /tmp/result.txt
 
-      # 2️⃣ Разбираем результат
+      # 2️⃣ Копируем лог-файл с сервера на GitHub runner
+      - name: Download report file from remote
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "/tmp/container_status.txt"
+          target: "./"
+
+      # 3️⃣ Загружаем отчёт как артефакт
+      - name: Upload container report as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: container-status-report
+          path: ./container_status.txt
+          retention-days: 7  # хранить 7 дней
+
+      # 4️⃣ Остальные шаги (разбор результата и уведомления)
       - name: Parse container status
         id: parse
         run: |
-          line="${{ steps.check.outputs.result }}"
-          echo "Raw line: $line"
-          last_line=$(echo "$line" | grep '|' | tail -n 1)
-          echo "Parsed line: $last_line"
+          line=$(cat /tmp/result.txt || echo "unknown|no result")
           status=$(echo "$line" | cut -d'|' -f1)
           details=$(echo "$line" | cut -d'|' -f2-)
           echo "status=$status" >> $GITHUB_OUTPUT
           echo "details=$details" >> $GITHUB_OUTPUT
 
-      # 3️⃣ Получаем текущее время (МСК)
       - name: Get current time (Moscow)
         id: time
         run: |
@@ -62,7 +80,6 @@ jobs:
           now=$(date +"%d %B %Y, %H:%M (%Z)")
           echo "time=$now" >> $GITHUB_OUTPUT
 
-      # 4️⃣ Отправляем отчет в Telegram (если работает)
       - name: Notify if container is running
         if: ${{ steps.parse.outputs.status == 'running' }}
         uses: appleboy/telegram-action@master
@@ -71,12 +88,12 @@ jobs:
           token: ${{ secrets.BOT_TOKEN }}
           format: markdown
           message: |
-            ✅ *Контейнер работает нормально!*
+            ✅ *Контейнер работает!*
             🐳 *Имя:* `${{ env.CONTAINER_NAME }}`
             🟢 ${{ steps.parse.outputs.details }}
             🕒 *Время:* ${{ steps.time.outputs.time }}
+            📄 [Отчёт в артефактах GitHub Actions](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
-      # 5️⃣ Отправляем отчет в Telegram (если не работает)
       - name: Notify if container is stopped or not found
         if: ${{ steps.parse.outputs.status != 'running' }}
         uses: appleboy/telegram-action@master
@@ -89,4 +106,4 @@ jobs:
             🐳 *Имя:* `${{ env.CONTAINER_NAME }}`
             🔴 ${{ steps.parse.outputs.details }}
             🕒 *Время:* ${{ steps.time.outputs.time }}
-            🔗 [Открыть логи в GitHub Actions](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            📄 [Отчёт в артефактах GitHub Actions](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
