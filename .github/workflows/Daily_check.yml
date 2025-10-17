@@ -40,29 +40,36 @@ jobs:
 
               if [ "$STATUS" = "running" ]; then
                 docker logs --tail 20 "$CONTAINER" >> "$REPORT" 2>&1
-                RESULT="running|🟢 Container is running"
+                RESULT="running| Container is running"
               else
-                RESULT="stopped|🔴 Container is stopped"
+                RESULT="stopped| Container is stopped"
               fi
             fi
 
             echo "$RESULT" > "$RESULT_FILE"
             cat "$RESULT_FILE"
 
-      # 2️⃣ Получаем содержимое result.txt с сервера вручную
-      - name: Get result from server
+      - name: Get result from server (wrap with markers)
         id: get_result
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
-          password: ${{ secrets.SSH_PRIVATE_KEY}}
+          password: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
-          script: cat /tmp/result.txt
+          script_stop: false
+          script: |
+            echo "GH_OUTPUT_START"
+            cat /tmp/result.txt || true
+            echo "GH_OUTPUT_END"
 
-      # 3️⃣ Сохраняем результат в локальный файл и в артефакт
-      - name: Save result to artifact
-        run: echo "${{ steps.get_result.outputs.output }}" > result.txt
+      - name: Save result to file (extract between markers)
+        run: |
+          # Safely extract lines between markers and save
+          echo "${{ steps.get_result.outputs.output }}" > __raw_output.txt
+          sed -n '/GH_OUTPUT_START/,/GH_OUTPUT_END/{//!p;}' __raw_output.txt > result.txt || true
+          echo "Saved result.txt (len=$(wc -c < result.txt || echo 0))"
+
 
       - name: Upload result artifact
         uses: actions/upload-artifact@v4
