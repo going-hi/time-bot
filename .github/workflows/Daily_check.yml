@@ -23,7 +23,9 @@ jobs:
           script_stop: false
           script: |
             CONTAINER="${{ env.CONTAINER_NAME }}"
-            REPORT="/tmp/container_status.txt"
+            REPORT="$HOME/container_status.txt"
+            RESULT_FILE="$HOME/result.txt"
+
             echo "🔍 Checking container: $CONTAINER" > "$REPORT"
 
             if ! docker inspect "$CONTAINER" >/dev/null 2>&1; then
@@ -34,7 +36,7 @@ jobs:
               echo "Status: $STATUS" >> "$REPORT"
               echo "Details:" >> "$REPORT"
               docker inspect "$CONTAINER" | head -n 30 >> "$REPORT"
-              
+
               if [ "$STATUS" = "running" ]; then
                 docker logs --tail 20 "$CONTAINER" >> "$REPORT" 2>&1
                 RESULT="running|🟢 Container is running"
@@ -43,16 +45,17 @@ jobs:
               fi
             fi
 
-            echo "$RESULT" > /tmp/result.txt
+            echo "$RESULT" > "$RESULT_FILE"
+            ls -lah "$HOME"
 
-      # 2️⃣ Копируем лог-файл с сервера на GitHub runner
-      - name: Download report file from remote
+      # 2️⃣ Копируем оба файла с сервера
+      - name: Download report files from remote
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "/tmp/container_status.txt"
+          source: "~/container_status.txt,~/result.txt"
           target: "./"
 
       # 3️⃣ Загружаем отчёт как артефакт
@@ -61,18 +64,20 @@ jobs:
         with:
           name: container-status-report
           path: ./container_status.txt
-          retention-days: 7  # хранить 7 дней
+          retention-days: 7
 
-      # 4️⃣ Остальные шаги (разбор результата и уведомления)
+      # 4️⃣ Разбор результата (теперь уже локального)
       - name: Parse container status
         id: parse
         run: |
-          line=$(cat /tmp/result.txt || echo "unknown|no result")
+          line=$(cat ./result.txt || echo "unknown|no result")
+          echo "Raw result: $line"
           status=$(echo "$line" | cut -d'|' -f1)
           details=$(echo "$line" | cut -d'|' -f2-)
           echo "status=$status" >> $GITHUB_OUTPUT
           echo "details=$details" >> $GITHUB_OUTPUT
 
+      # 5️⃣ Текущее время
       - name: Get current time (Moscow)
         id: time
         run: |
@@ -80,6 +85,7 @@ jobs:
           now=$(date +"%d %B %Y, %H:%M (%Z)")
           echo "time=$now" >> $GITHUB_OUTPUT
 
+      # 6️⃣ Telegram уведомления
       - name: Notify if container is running
         if: ${{ steps.parse.outputs.status == 'running' }}
         uses: appleboy/telegram-action@master
