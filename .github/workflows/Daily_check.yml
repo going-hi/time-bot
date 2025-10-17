@@ -18,13 +18,13 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
+          username: root
           password: ${{ secrets.SSH_PRIVATE_KEY }}
           script_stop: false
           script: |
             CONTAINER="${{ env.CONTAINER_NAME }}"
-            REPORT="$HOME/container_status.txt"
-            RESULT_FILE="$HOME/result.txt"
+            REPORT="/root/container_status.txt"
+            RESULT_FILE="/root/result.txt"
 
             echo "🔍 Checking container: $CONTAINER" > "$REPORT"
 
@@ -46,16 +46,16 @@ jobs:
             fi
 
             echo "$RESULT" > "$RESULT_FILE"
-            ls -lah "$HOME"
+            ls -lah /root
 
       # 2️⃣ Копируем оба файла с сервера
       - name: Download report files from remote
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
+          username: root
           password: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "~/container_status.txt,~/result.txt"
+          source: "/root/container_status.txt,/root/result.txt"
           target: "./"
 
       # 3️⃣ Загружаем отчёт как артефакт
