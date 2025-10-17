@@ -25,10 +25,10 @@ export class TimeCommand extends AbstractCommand {
 
 		let result = 'Не удалось распознать команду'
 
-		if (isAllCitiesNow) {
-			result = await this.handleAllCities(params, saveCities)
-		} else if (isWillTime) {
+		if (isWillTime) {
 			result = await this.handleWillTime(params, saveCities)
+		} else if (isAllCitiesNow) {
+			result = await this.handleAllCities(params, saveCities)
 		}
 
 		return result
