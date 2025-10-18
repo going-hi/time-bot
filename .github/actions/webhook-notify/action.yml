@@ -1,0 +1,36 @@
+name: "Webhook Notify"
+description: "Отправляет HTTP запрос на webhook и возвращает статус код"
+
+inputs:
+  url:
+    description: "Webhook URL"
+    required: true
+  token:
+    description: "Authorization token"
+    required: false
+
+outputs:
+  response_code:
+    description: "HTTP статус код"
+    value: ${{ steps.webhook.outputs.response_code }}   
+
+runs:
+  using: "composite"
+  steps:
+    - name: Call webhook
+      id: webhook
+      shell: bash
+      run: |
+        response_code=$(curl -s -o /dev/null -w "%{http_code}" \
+          --header "Authorization: ${{ inputs.token }}" \
+          "${{ inputs.url }}")
+
+        echo "response_code=$response_code" >> "$GITHUB_OUTPUT"
+
+        if [ "$response_code" -eq 200 ]; then
+          echo "✅ Webhook successful (HTTP 200)"
+        elif [ "$response_code" -eq 400 ] || [ "$response_code" -eq 401 ] || [ "$response_code" -eq 403 ]; then
+          echo "⚠️ Webhook client error (HTTP $response_code)"
+        else
+          echo "❌ Webhook failed with HTTP $response_code"
+        fi
