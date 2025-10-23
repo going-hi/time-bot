@@ -52,10 +52,10 @@ jobs:
       - name: Delete old GHCR versions
         uses: actions/delete-package-versions@v5
         with:
-          package-name: 'bad0request/time-bot'
+          package-name: ${{ env.IMAGE_NAME }}
           package-type: 'container'
           min-versions-to-keep: 3
-          token: ${{ secrets.REGISTRY_TOKEN }}
+          token: ${{ secrets.REGISTRY_PAT_TOKEN }}
       
       - name: Deploy to Server
         uses: appleboy/ssh-action@v1.0.3
