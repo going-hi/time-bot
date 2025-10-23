@@ -55,7 +55,7 @@ jobs:
           package-name: 'bad0request/time-bot'
           package-type: 'container'
           min-versions-to-keep: 3
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.REGISTRY_TOKEN }}
       
       - name: Deploy to Server
         uses: appleboy/ssh-action@v1.0.3
