@@ -51,6 +51,7 @@ jobs:
 
       - name: Delete old GHCR versions
         uses: actions/delete-package-versions@v5
+        continue-on-error: true
         with:
           package-name: ${{ env.IMAGE_NAME }}
           package-type: 'docker'
