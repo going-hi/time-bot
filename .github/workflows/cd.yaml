@@ -53,7 +53,7 @@ jobs:
         uses: actions/delete-package-versions@v5
         with:
           package-name: ${{ env.IMAGE_NAME }}
-          package-type: 'container'
+          package-type: 'docker'
           min-versions-to-keep: 3
           token: ${{ secrets.REGISTRY_PAT_TOKEN }}
       
